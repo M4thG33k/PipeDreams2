@@ -1,6 +1,6 @@
 package com.m4thg33k.pipedreams2.util;
 
-import com.m4thg33k.pipedreams2.lib.Names;
+import com.m4thg33k.pipedreams2.core.lib.Names;
 import net.minecraftforge.fml.common.FMLLog;
 import org.apache.logging.log4j.Level;
 

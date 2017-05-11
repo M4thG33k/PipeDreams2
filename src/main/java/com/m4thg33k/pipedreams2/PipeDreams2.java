@@ -1,6 +1,6 @@
 package com.m4thg33k.pipedreams2;
 
-import com.m4thg33k.pipedreams2.lib.Names;
+import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.proxy.CommonProxy;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
