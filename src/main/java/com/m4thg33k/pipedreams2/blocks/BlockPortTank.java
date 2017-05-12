@@ -2,14 +2,12 @@ package com.m4thg33k.pipedreams2.blocks;
 
 import com.m4thg33k.pipedreams2.blocks.templates.BaseBlockTESRDismantle;
 import com.m4thg33k.pipedreams2.core.interfaces.IDismantleableTile;
+import com.m4thg33k.pipedreams2.core.interfaces.IToggleSides;
 import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.tiles.TilePortTank;
-import com.m4thg33k.pipedreams2.util.LogHelper;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
 import net.minecraft.inventory.InventoryHelper;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
@@ -20,16 +18,10 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandler;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
-public class BlockPortTank extends BaseBlockTESRDismantle {
+public class BlockPortTank extends BaseBlockTESRDismantle implements IToggleSides {
 
     public BlockPortTank()
     {
@@ -67,11 +59,21 @@ public class BlockPortTank extends BaseBlockTESRDismantle {
             if (!heldItem.isEmpty())
             {
                 //add case for wrench logic
-                boolean movedFluid = FluidUtil.interactWithFluidHandler(playerIn, hand, worldIn, pos, facing);
+                boolean movedFluid = FluidUtil.interactWithFluidHandler(playerIn, hand, worldIn, pos, null);
                 return movedFluid;
             }
+            else if (!playerIn.isSneaking())
+            {
+                ((TilePortTank) tile).incrementConnectionType(facing);
+                return true;
+            }
+            else
+            {
+                ((TilePortTank) tile).incrementConnectionType(facing.getOpposite());
+                return true;
+            }
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -86,15 +88,15 @@ public class BlockPortTank extends BaseBlockTESRDismantle {
 
     @Override
     public void onBlockHarvested(World worldIn, BlockPos pos, IBlockState state, EntityPlayer player) {
-        LogHelper.info("Harvest");
-        LogHelper.info(worldIn.getBlockState(pos).getBlock());
+//        LogHelper.info("Harvest");
+//        LogHelper.info(worldIn.getBlockState(pos).getBlock());
         super.onBlockHarvested(worldIn, pos, state, player);
     }
 
     @Override
     public void onBlockDestroyedByPlayer(World worldIn, BlockPos pos, IBlockState state) {
-        LogHelper.info("Destroy");
-        LogHelper.info(worldIn.getBlockState(pos).getBlock());
+//        LogHelper.info("Destroy");
+//        LogHelper.info(worldIn.getBlockState(pos).getBlock());
         super.onBlockDestroyedByPlayer(worldIn, pos, state);
     }
 
@@ -123,4 +125,24 @@ public class BlockPortTank extends BaseBlockTESRDismantle {
         world.removeTileEntity(pos);
         world.setBlockToAir(pos);
     }
+
+    @Override
+    public boolean toggleSide(World world, BlockPos pos, EnumFacing side) {
+        TileEntity tile = world.getTileEntity(pos);
+
+        if (tile != null && tile instanceof TilePortTank)
+        {
+            ((TilePortTank) tile).toggleFluidConnection(side);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean toggleOppositeSide(World world, BlockPos pos, EnumFacing side) {
+        return toggleSide(world, pos, side.getOpposite());
+    }
+
+
 }

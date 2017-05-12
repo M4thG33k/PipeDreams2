@@ -32,8 +32,14 @@ public class ModelTankValve extends ModelBaseMultiModel {
             case PUSH:
                 renderModel(STR_PUSH);
                 break;
-
-
+            case PULL:
+                renderModel(STR_PULL);
+                break;
+            case DEFAULT:
+                renderModel(STR_DEFAULT);
+                break;
+            default:
+                break;
         }
     }
 

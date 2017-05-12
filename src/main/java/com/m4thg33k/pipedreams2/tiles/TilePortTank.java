@@ -1,12 +1,17 @@
 package com.m4thg33k.pipedreams2.tiles;
 
+import com.m4thg33k.pipedreams2.core.connections.FluidConnectionQuantifiers;
+import com.m4thg33k.pipedreams2.core.connections.FluidConnections;
+import com.m4thg33k.pipedreams2.core.enums.EnumFluidConnectionType;
 import com.m4thg33k.pipedreams2.core.interfaces.IDismantleableTile;
+import com.m4thg33k.pipedreams2.util.LogHelper;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
@@ -24,6 +29,9 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
 
     public static final int CAPACITY = 8 * Fluid.BUCKET_VOLUME;
     protected FluidTank tank = new FluidTank(CAPACITY);
+
+    protected FluidConnections fluidConnections = new FluidConnections();
+    protected FluidConnectionQuantifiers fluidConnectionQuantifiers = new FluidConnectionQuantifiers(new int[6]);
 
     protected int MAX_FLOW = 100;
 
@@ -45,12 +53,16 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
         tank.readFromNBT(compound);
+        fluidConnections.readFromNBT(compound);
+        fluidConnectionQuantifiers.readFromNBT(compound);
     }
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
         compound = super.writeToNBT(compound);
         compound = tank.writeToNBT(compound);
+        compound = fluidConnections.writeToNBT(compound);
+        compound = fluidConnectionQuantifiers.writeToNBT(compound);
 
         return compound;
     }
@@ -85,24 +97,31 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
 
         this.readFromNBT(compound);
         EnumFacing oldFacing = EnumFacing.values()[compound.getInteger("PlayerFacing")];
-//        while (oldFacing != playerFacing)
-//        {
-//            //// TODO: 5/11/2017 handle rotation of connections
-//        }
+        while (oldFacing != playerFacing)
+        {
+            oldFacing = this.rotateConnections(oldFacing);
+        }
 
         this.markDirty();
         this.world.notifyBlockUpdate(pos, world.getBlockState(pos), world.getBlockState(pos), 1);
     }
 
+    protected EnumFacing rotateConnections(EnumFacing old)
+    {
+        fluidConnections.rotateAboutAxis(EnumFacing.Axis.Y);
+        fluidConnectionQuantifiers.rotateAboutAxis(EnumFacing.Axis.Y);
+        return old.rotateYCCW();
+    }
+
     @Override
     public boolean hasCapability(@Nonnull Capability<?> capability, @Nullable EnumFacing facing) {
-        return (capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY) || super.hasCapability(capability, facing);
+        return (capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY && isSideConnected(facing)) || super.hasCapability(capability, facing);
     }
 
     @Nullable
     @Override
     public <T> T getCapability(@Nonnull  Capability<T> capability, @Nullable EnumFacing facing) {
-        if (capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY)
+        if (capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY && isSideConnected(facing))
         {
             return (T) sideHandlers.get(facing);
         }
@@ -113,6 +132,11 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
     {
         this.markDirty();
         this.world.notifyBlockUpdate(pos, world.getBlockState(pos), world.getBlockState(pos), 0);
+    }
+
+    protected boolean isSideConnected(EnumFacing side)
+    {
+        return (side == null) || fluidConnections.isSideConnected(side);
     }
 
     @Override
@@ -193,6 +217,38 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
         this.readFromNBT(pkt.getNbtCompound());
     }
 
+    public int getFluidConnectionsAsInteger()
+    {
+        return fluidConnections.getConnectionsAsInteger();
+    }
+
+    public void toggleFluidConnection(EnumFacing side)
+    {
+        fluidConnections.toggleSideConnection(side);
+        performUpdate();
+    }
+
+    public EnumFluidConnectionType getConnectionType(EnumFacing side)
+    {
+        return fluidConnectionQuantifiers.getSideType(side);
+    }
+
+    public void incrementConnectionType(EnumFacing side)
+    {
+        if (!isSideConnected(side))
+        {
+            return;
+        }
+        fluidConnectionQuantifiers.incrementSide(side);
+        performUpdate();
+    }
+
+    @Override
+    @Nonnull
+    public AxisAlignedBB getRenderBoundingBox() {
+        return new AxisAlignedBB(pos, pos.add(1, 1, 1));
+    }
+
     private class SideHandler implements IFluidHandler{
         private EnumFacing side;
 
@@ -208,46 +264,34 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
 
         @Override
         public int fill(FluidStack resource, boolean doFill) {
-            if (side != null)
+            int amount = tank.fill(resource, doFill);
+            if (doFill && amount > 0)
             {
-                int amount = tank.fill(resource, doFill);
-                if (doFill && amount > 0)
-                {
-                    performUpdate();
-                }
-                return amount;
+                performUpdate();
             }
-            return 0;
+            return amount;
         }
 
         @Nullable
         @Override
         public FluidStack drain(FluidStack resource, boolean doDrain) {
-            if (side != null)
+            FluidStack moved = tank.drain(resource, doDrain);
+            if (doDrain && moved != null && moved.amount > 0)
             {
-                FluidStack moved = tank.drain(resource, doDrain);
-                if (doDrain && moved != null && moved.amount > 0)
-                {
-                    performUpdate();
-                }
-                return moved;
+                performUpdate();
             }
-            return null;
+            return moved;
         }
 
         @Nullable
         @Override
         public FluidStack drain(int maxDrain, boolean doDrain) {
-            if (side != null)
+            FluidStack moved = tank.drain(maxDrain, doDrain);
+            if (doDrain && moved != null && moved.amount > 0)
             {
-                FluidStack moved = tank.drain(maxDrain, doDrain);
-                if (doDrain && moved != null && moved.amount > 0)
-                {
-                    performUpdate();
-                }
-                return moved;
+                performUpdate();
             }
-            return null;
+            return moved;
         }
     }
 }

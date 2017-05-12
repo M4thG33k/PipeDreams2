@@ -1,6 +1,7 @@
 package com.m4thg33k.pipedreams2.items;
 
 import com.m4thg33k.pipedreams2.core.interfaces.IDismantleable;
+import com.m4thg33k.pipedreams2.core.interfaces.IToggleSides;
 import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.util.LogHelper;
 import net.minecraft.block.Block;
@@ -26,10 +27,10 @@ public class ItemWrench extends ItemBaseItem {
 
     @Override
     @Nonnull
-    public EnumActionResult onItemUseFirst(EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand) {
+    public EnumActionResult onItemUse(EntityPlayer player, World world, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
         if (world.isRemote)
         {
-            return EnumActionResult.PASS;
+            return EnumActionResult.SUCCESS;
         }
 
         Block block = world.getBlockState(pos).getBlock();
@@ -42,15 +43,30 @@ public class ItemWrench extends ItemBaseItem {
                 {
                     ((IDismantleable) block).dismantle(player, world, pos);
                 }
-                LogHelper.info("Success");
                 return EnumActionResult.SUCCESS;
             }
-            LogHelper.info("Pass1");
-            return EnumActionResult.PASS;
         }
-        LogHelper.info("Pass2");
+        if (block instanceof IToggleSides)
+        {
+            ItemStack wrench = player.getHeldItem(hand);
+            if (wrench.getItem() == ModItems.itemWrench)
+            {
+                switch (wrench.getItemDamage())
+                {
+                    case 1:
+                        // Inverted
+                        ((IToggleSides) block).toggleOppositeSide(world, pos, facing);
+                        break;
+                    default:
+                        ((IToggleSides) block).toggleSide(world, pos, facing);
+                }
+                return EnumActionResult.SUCCESS;
+            }
+        }
         return EnumActionResult.PASS;
     }
+
+
 
     @Override
     @Nonnull

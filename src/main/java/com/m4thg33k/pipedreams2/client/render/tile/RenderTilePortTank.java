@@ -78,14 +78,26 @@ public class RenderTilePortTank extends RenderTileSymmetricBase<TilePortTank> {
     private void renderValves(TilePortTank tank)
     {
         //// TODO: 5/11/2017 handle special renders for connections types
-        GlStateManager.pushMatrix();
-        rotate(EnumFacing.DOWN);
-        tankValve.renderModel(0);
-        GlStateManager.popMatrix();
-
-        GlStateManager.pushMatrix();
-        rotate(EnumFacing.UP);
-        tankValve.renderModel(0);
-        GlStateManager.popMatrix();
+        int connections = tank.getFluidConnectionsAsInteger();
+        for (int i=0; i<6; i++)
+        {
+            if (1 == (connections&1))
+            {
+                GlStateManager.pushMatrix();
+                rotate(EnumFacing.VALUES[i]);
+                tankValve.renderModel(tank.getConnectionType(EnumFacing.VALUES[i]));
+                GlStateManager.popMatrix();
+            }
+            connections >>= 1;
+        }
+//        GlStateManager.pushMatrix();
+//        rotate(EnumFacing.DOWN);
+//        tankValve.renderModel(0);
+//        GlStateManager.popMatrix();
+//
+//        GlStateManager.pushMatrix();
+//        rotate(EnumFacing.UP);
+//        tankValve.renderModel(0);
+//        GlStateManager.popMatrix();
     }
 }
