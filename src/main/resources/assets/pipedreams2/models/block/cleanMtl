@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for i in *.mtl;
+do
+	cat $i | sed -E "/^(Ns)|(Ni)|(illum)/d" > $i;
+done

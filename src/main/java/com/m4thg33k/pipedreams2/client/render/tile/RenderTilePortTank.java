@@ -3,6 +3,7 @@ package com.m4thg33k.pipedreams2.client.render.tile;
 import com.m4thg33k.pipedreams2.client.handlers.ClientTickHandler;
 import com.m4thg33k.pipedreams2.client.render.models.ModelSphere;
 import com.m4thg33k.pipedreams2.client.render.models.ModelTankValve;
+import com.m4thg33k.pipedreams2.client.render.models.SphereModels;
 import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.tiles.TilePortTank;
 import net.minecraft.client.Minecraft;
@@ -37,7 +38,8 @@ public class RenderTilePortTank extends RenderTileSymmetricBase<TilePortTank> {
             center = new ModelSphere(new ResourceLocation(Names.MODID, "blocks/tank_sphere"));
         }
 
-        //// TODO: 5/11/2017 deal with TE connections, radii, etc
+        radius = te.getRadius();
+        sphere = radius > 0 ? SphereModels.getSphereFromFluid(te.getFluid()) : null;
         radius += 0.1;
 
         double worldTime = (double)(ClientTickHandler.ticksInGame + partialTicks) +
@@ -61,7 +63,14 @@ public class RenderTilePortTank extends RenderTileSymmetricBase<TilePortTank> {
         renderValves(te);
 //        renderValves(te, connections);
 
-        //// TODO: 5/11/2017 render fluid sphere
+        if (sphere != null)
+        {
+            GlStateManager.pushMatrix();
+            GlStateManager.scale(radius, radius, radius);
+            GlStateManager.rotate((float) worldTime, 0f, 1f, 0f);
+            sphere.renderModel();
+            GlStateManager.popMatrix();
+        }
 
         GlStateManager.popMatrix();
     }

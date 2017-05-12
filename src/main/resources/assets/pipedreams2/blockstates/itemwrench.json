@@ -1,0 +1,24 @@
+{
+  "forge_marker": 1,
+  "defaults": {
+    "model": "builtin/generated",
+    "transform": "forge:default-item"
+  },
+  "variants": {
+    "inventory": [{
+    }],
+    "meta":
+    {
+      "0": {
+        "textures": {
+          "layer0": "pipedreams2:items/item_wrench"
+        }
+      },
+      "1": {
+        "textures": {
+          "layer0": "pipedreams2:items/item_wrench_upside_down"
+        }
+      }
+    }
+  }
+}

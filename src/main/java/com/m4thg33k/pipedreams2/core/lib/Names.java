@@ -9,6 +9,11 @@ public class Names {
     // ------------------ Paths ------------------
     public static final String PATH_BLOCK_MODELS = MODID + ":models/block/";
 
+
     // ------------------ Blocks ------------------
     public static final String TILE_PORTABLE_TANK = "tilePortableTank";
+
+
+    // ------------------ Items ------------------
+    public static final String ITEM_WRENCH = "itemWrench";
 }

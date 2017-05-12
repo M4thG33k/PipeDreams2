@@ -1,5 +1,6 @@
 package com.m4thg33k.pipedreams2.blocks.templates;
 
+import com.m4thg33k.pipedreams2.PipeDreams2;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 
@@ -13,6 +14,8 @@ public class BaseBlock extends Block{
         this.setResistance(resistance);
 
         this.handleRegName();
+
+        this.setCreativeTab(PipeDreams2.tabPipeDreams);
     }
 
     public BaseBlock(String unlocalizedName, float hardness, float resistance)
