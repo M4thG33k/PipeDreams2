@@ -50,4 +50,12 @@ public class LogHelper {
     {
         log(Level.WARN, object);
     }
+
+    public static void info(Object... objects)
+    {
+        for (Object o : objects)
+        {
+            info(o);
+        }
+    }
 }

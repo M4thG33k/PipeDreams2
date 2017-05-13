@@ -6,7 +6,9 @@ import com.m4thg33k.pipedreams2.client.render.ModTESRs;
 import com.m4thg33k.pipedreams2.client.render.TankRenderHelper;
 import com.m4thg33k.pipedreams2.client.render.registers.ItemRenderRegisters;
 import com.m4thg33k.pipedreams2.core.lib.Names;
+import com.m4thg33k.pipedreams2.core.network.packets.BaseRenderingPacket;
 import com.m4thg33k.pipedreams2.core.network.packets.PacketTankFilling;
+import com.m4thg33k.pipedreams2.core.particles.ParticleManager;
 import net.minecraftforge.client.model.obj.OBJLoader;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -34,7 +36,10 @@ public class ClientProxy extends CommonProxy {
     }
 
     @Override
-    public void handleRenderingPacket(PacketTankFilling pkt) {
-        super.handleRenderingPacket(pkt);
+    public void handleRenderingPacket(BaseRenderingPacket pkt) {
+        if (pkt instanceof PacketTankFilling)
+        {
+            ParticleManager.tankFillingParticles((PacketTankFilling)pkt);
+        }
     }
 }

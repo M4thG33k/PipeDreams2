@@ -11,8 +11,12 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
+import java.util.Random;
+
 @Mod(modid = Names.MODID, name = Names.MODNAME, version = Names.VERSION)
 public class PipeDreams2 {
+
+    public static final Random RAND = new Random();
 
     @Mod.Instance
     public static PipeDreams2 INSTANCE = new PipeDreams2();

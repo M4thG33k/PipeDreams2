@@ -11,7 +11,7 @@ public class FluidConnections implements ISideConnector {
 
     public FluidConnections()
     {
-        this(63); // defaults all connections to "on"
+        this(3); // defaults only top and bottom connections to "on"
     }
 
     public FluidConnections(int initialSettings)

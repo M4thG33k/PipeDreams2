@@ -2,6 +2,8 @@ package com.m4thg33k.pipedreams2.proxy;
 
 import com.m4thg33k.pipedreams2.blocks.ModBlocks;
 import com.m4thg33k.pipedreams2.core.lib.ModConfigs;
+import com.m4thg33k.pipedreams2.core.network.ModNetwork;
+import com.m4thg33k.pipedreams2.core.network.packets.BaseRenderingPacket;
 import com.m4thg33k.pipedreams2.core.network.packets.PacketTankFilling;
 import com.m4thg33k.pipedreams2.items.ModItems;
 import com.m4thg33k.pipedreams2.tiles.ModTiles;
@@ -14,6 +16,7 @@ public class CommonProxy {
     public void preinit(FMLPreInitializationEvent event)
     {
         ModConfigs.preInit(event);
+        ModNetwork.setup();
         ModItems.preInit();
         ModBlocks.preInit();
     }
@@ -28,7 +31,7 @@ public class CommonProxy {
 
     }
 
-    public void handleRenderingPacket(PacketTankFilling pkt)
+    public void handleRenderingPacket(BaseRenderingPacket pkt)
     {
 
     }

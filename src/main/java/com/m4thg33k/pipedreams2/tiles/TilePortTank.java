@@ -4,7 +4,8 @@ import com.m4thg33k.pipedreams2.core.connections.FluidConnectionQuantifiers;
 import com.m4thg33k.pipedreams2.core.connections.FluidConnections;
 import com.m4thg33k.pipedreams2.core.enums.EnumFluidConnectionType;
 import com.m4thg33k.pipedreams2.core.interfaces.IDismantleableTile;
-import com.m4thg33k.pipedreams2.util.LogHelper;
+import com.m4thg33k.pipedreams2.core.network.ModNetwork;
+import com.m4thg33k.pipedreams2.core.network.packets.PacketTankFilling;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
@@ -19,7 +20,7 @@ import net.minecraftforge.fluids.FluidTank;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidTankProperties;
-import scala.unchecked;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -197,6 +198,13 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
 
     @Override
     public void update() {
+        if (world.isRemote)
+        {
+            return;
+        }
+
+        attemptFluidPush();
+        attemptFluidPull();
     }
 
     @Override
@@ -243,6 +251,55 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
         performUpdate();
     }
 
+    protected void moveFluid(boolean shouldMoveOut)
+    {
+        boolean isDirty = false;
+
+        for (EnumFacing side : EnumFacing.values())
+        {
+            if (isSideConnected(side) &&
+                    (fluidConnectionQuantifiers.doesSideMatch(side, shouldMoveOut ?
+                            EnumFluidConnectionType.PUSH :
+                            EnumFluidConnectionType.PULL)))
+            {
+                TileEntity tile = world.getTileEntity(pos.offset(side));
+                if (tile != null &&
+                        tile.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, side.getOpposite()))
+                {
+                    IFluidHandler from = shouldMoveOut ? getFluidHandlerFor(this, side) : getFluidHandlerFor(tile, side.getOpposite());
+                    IFluidHandler to = shouldMoveOut ? getFluidHandlerFor(tile, side.getOpposite()) : getFluidHandlerFor(this, side);
+
+                    int amount = to.fill(from.drain(MAX_FLOW, false), false);
+                    if (amount > 0)
+                    {
+                        to.fill(from.drain(amount, true), true);
+                        isDirty = true;
+                    }
+                }
+            }
+        }
+
+        if (isDirty)
+        {
+            performUpdate();
+        }
+    }
+
+    protected void attemptFluidPull()
+    {
+        this.moveFluid(false);
+    }
+
+    protected void attemptFluidPush()
+    {
+        this.moveFluid(true);
+    }
+
+    public static IFluidHandler getFluidHandlerFor(TileEntity tile, EnumFacing side)
+    {
+        return tile.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, side);
+    }
+
     @Override
     @Nonnull
     public AxisAlignedBB getRenderBoundingBox() {
@@ -264,34 +321,174 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
 
         @Override
         public int fill(FluidStack resource, boolean doFill) {
-            int amount = tank.fill(resource, doFill);
-            if (doFill && amount > 0)
+            if (side == null)
             {
-                performUpdate();
+                int amount = tank.fill(resource, doFill);
+                if (doFill && amount > 0)
+                {
+                    ModNetwork.sendToAllAround(new PacketTankFilling(
+                            pos,
+                            side,
+                            true,
+                            resource.getFluid().getName(),
+                            amount
+                    ), new NetworkRegistry.TargetPoint(
+                            world.provider.getDimension(),
+                            pos.getX(),
+                            pos.getY(),
+                            pos.getZ(),
+                            64
+                    ));
+                    performUpdate();
+                }
+                return amount;
             }
-            return amount;
+            if (isSideConnected(side))
+            {
+                switch (fluidConnectionQuantifiers.getSideType(side))
+                {
+                    case PULL:
+                    case DEFAULT:
+                        int amount = tank.fill(resource, doFill);
+                        if (doFill && amount > 0)
+                        {
+                            ModNetwork.sendToAllAround(new PacketTankFilling(
+                                    pos,
+                                    side,
+                                    true,
+                                    resource.getFluid().getName(),
+                                    amount
+                            ), new NetworkRegistry.TargetPoint(
+                                    world.provider.getDimension(),
+                                    pos.getX(),
+                                    pos.getY(),
+                                    pos.getZ(),
+                                    64
+                            ));
+                            performUpdate();
+                        }
+                        return amount;
+                    default:
+                        return 0;
+                }
+            }
+            return 0;
         }
 
         @Nullable
         @Override
         public FluidStack drain(FluidStack resource, boolean doDrain) {
-            FluidStack moved = tank.drain(resource, doDrain);
-            if (doDrain && moved != null && moved.amount > 0)
+            if (side == null)
             {
-                performUpdate();
+                FluidStack moved = tank.drain(resource, doDrain);
+                if (doDrain && moved != null && moved.amount > 0)
+                {
+                    ModNetwork.sendToAllAround(new PacketTankFilling(
+                            pos,
+                            side,
+                            false,
+                            resource.getFluid().getName(),
+                            moved.amount
+                    ), new NetworkRegistry.TargetPoint(
+                            world.provider.getDimension(),
+                            pos.getX(),
+                            pos.getY(),
+                            pos.getZ(),
+                            64
+                    ));
+                    performUpdate();
+                }
+                return moved;
             }
-            return moved;
+            if (isSideConnected(side))
+            {
+                switch (fluidConnectionQuantifiers.getSideType(side))
+                {
+                    case PUSH:
+                    case DEFAULT:
+                        FluidStack moved = tank.drain(resource, doDrain);
+                        if (doDrain && moved != null && moved.amount > 0)
+                        {
+                            ModNetwork.sendToAllAround(new PacketTankFilling(
+                                    pos,
+                                    side,
+                                    false,
+                                    resource.getFluid().getName(),
+                                    moved.amount
+                            ), new NetworkRegistry.TargetPoint(
+                                    world.provider.getDimension(),
+                                    pos.getX(),
+                                    pos.getY(),
+                                    pos.getZ(),
+                                    64
+                            ));
+                            performUpdate();
+                        }
+                        return moved;
+                }
+            }
+            return null;
+//            FluidStack moved = tank.drain(resource, doDrain);
+//            if (doDrain && moved != null && moved.amount > 0)
+//            {
+//                performUpdate();
+//            }
+//            return moved;
         }
 
         @Nullable
         @Override
         public FluidStack drain(int maxDrain, boolean doDrain) {
-            FluidStack moved = tank.drain(maxDrain, doDrain);
-            if (doDrain && moved != null && moved.amount > 0)
+            if (side == null)
             {
-                performUpdate();
+                FluidStack moved = tank.drain(maxDrain, doDrain);
+                if (doDrain && moved != null && moved.amount > 0)
+                {
+                    ModNetwork.sendToAllAround(new PacketTankFilling(
+                            pos,
+                            side,
+                            false,
+                            moved.getFluid().getName(),
+                            moved.amount
+                    ), new NetworkRegistry.TargetPoint(
+                            world.provider.getDimension(),
+                            pos.getX(),
+                            pos.getY(),
+                            pos.getZ(),
+                            64
+                    ));
+                    performUpdate();
+                }
+                return moved;
             }
-            return moved;
+            if (isSideConnected(side))
+            {
+                switch (fluidConnectionQuantifiers.getSideType(side))
+                {
+                    case PUSH:
+                    case DEFAULT:
+                        FluidStack moved = tank.drain(maxDrain, doDrain);
+                        if (doDrain && moved != null && moved.amount > 0)
+                        {
+                            ModNetwork.sendToAllAround(new PacketTankFilling(
+                                    pos,
+                                    side,
+                                    false,
+                                    moved.getFluid().getName(),
+                                    moved.amount
+                            ), new NetworkRegistry.TargetPoint(
+                                    world.provider.getDimension(),
+                                    pos.getX(),
+                                    pos.getY(),
+                                    pos.getZ(),
+                                    64
+                            ));
+                            performUpdate();
+                        }
+                        return moved;
+                }
+            }
+            return null;
         }
     }
 }

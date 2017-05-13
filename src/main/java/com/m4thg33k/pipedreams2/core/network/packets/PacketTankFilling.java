@@ -10,7 +10,7 @@ import net.minecraftforge.fml.common.network.ByteBufUtils;
 
 import javax.annotation.Nullable;
 
-public class PacketTankFilling extends BaseThreadsafePacket{
+public class PacketTankFilling extends BaseRenderingPacket{
 
     private EnumFacing side; //null -> bucket
     private boolean isFilling;
