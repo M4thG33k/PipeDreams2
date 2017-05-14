@@ -3,7 +3,6 @@ package com.m4thg33k.pipedreams2.items;
 import com.m4thg33k.pipedreams2.core.interfaces.IDismantleable;
 import com.m4thg33k.pipedreams2.core.interfaces.IToggleSides;
 import com.m4thg33k.pipedreams2.core.lib.Names;
-import com.m4thg33k.pipedreams2.util.LogHelper;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -15,8 +14,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
-public class ItemWrench extends ItemBaseItem {
+public class ItemWrench extends ItemBaseMetaItem {
 
     public ItemWrench()
     {
@@ -85,5 +85,16 @@ public class ItemWrench extends ItemBaseItem {
         }
 
         return ActionResult.newResult(EnumActionResult.PASS, stack);
+    }
+
+    @Override
+    public void addInformation(ItemStack stack, EntityPlayer playerIn, List<String> tooltip, boolean advanced) {
+        switch (stack.getItemDamage())
+        {
+            case 1:
+                tooltip.add("Affects the opposite side of the block");
+                break;
+            default:
+        }
     }
 }

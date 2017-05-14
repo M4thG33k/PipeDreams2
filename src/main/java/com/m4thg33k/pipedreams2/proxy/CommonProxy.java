@@ -1,6 +1,7 @@
 package com.m4thg33k.pipedreams2.proxy;
 
 import com.m4thg33k.pipedreams2.blocks.ModBlocks;
+import com.m4thg33k.pipedreams2.core.init.ModRecipes;
 import com.m4thg33k.pipedreams2.core.lib.ModConfigs;
 import com.m4thg33k.pipedreams2.core.network.ModNetwork;
 import com.m4thg33k.pipedreams2.core.network.packets.BaseRenderingPacket;
@@ -24,6 +25,7 @@ public class CommonProxy {
     public void init(FMLInitializationEvent event)
     {
         ModTiles.init();
+        ModRecipes.createRecipes();
     }
 
     public void postinit(FMLPostInitializationEvent event)

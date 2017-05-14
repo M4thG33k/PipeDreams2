@@ -12,8 +12,11 @@ public class Names {
 
     // ------------------ Blocks ------------------
     public static final String TILE_PORTABLE_TANK = "tilePortableTank";
+    public static final String BLOCK_GILDED_IRON = "blockGildedIron";
 
 
     // ------------------ Items ------------------
     public static final String ITEM_WRENCH = "itemWrench";
+    public static final String ITEM_GILDED_IRON = "itemGildedIron";
+    public static final String ITEM_GILDED_IRON_NUGGET = "itemGildedIronNugget";
 }

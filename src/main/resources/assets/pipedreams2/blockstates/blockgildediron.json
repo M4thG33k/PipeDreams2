@@ -1,0 +1,14 @@
+{
+  "forge_marker": 1,
+  "defaults": {
+    "model": "minecraft:cube_all",
+    "transform": "forge:default-block",
+    "textures": {
+      "all": "pipedreams2:blocks/gilded_iron_block"
+    }
+  },
+  "variants": {
+    "inventory": [{}],
+    "normal": [{}]
+  }
+}

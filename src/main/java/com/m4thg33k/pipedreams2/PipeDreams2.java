@@ -1,6 +1,8 @@
 package com.m4thg33k.pipedreams2;
 
+import com.m4thg33k.pipedreams2.blocks.ModBlocks;
 import com.m4thg33k.pipedreams2.core.lib.Names;
+import com.m4thg33k.pipedreams2.items.ModItems;
 import com.m4thg33k.pipedreams2.proxy.CommonProxy;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
@@ -46,7 +48,7 @@ public class PipeDreams2 {
     public static CreativeTabs tabPipeDreams = new CreativeTabs("tabPipeDream") {
         @Override
         public ItemStack getTabIconItem() {
-            return new ItemStack(Blocks.SKULL);
+            return new ItemStack(ModItems.itemWrench);
         }
     };
 }

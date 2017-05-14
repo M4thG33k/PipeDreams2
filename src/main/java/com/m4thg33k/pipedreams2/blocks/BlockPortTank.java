@@ -30,11 +30,6 @@ public class BlockPortTank extends BaseBlockTESRDismantle implements IToggleSide
     }
 
     @Override
-    public void handleRegName() {
-        this.setRegistryName(Names.MODID, Names.TILE_PORTABLE_TANK);
-    }
-
-    @Override
     public boolean hasTileEntity(IBlockState state) {
         return true;
     }
@@ -119,7 +114,8 @@ public class BlockPortTank extends BaseBlockTESRDismantle implements IToggleSide
         }
         if (shouldSpawn)
         {
-            InventoryHelper.spawnItemStack(world, player.posX, player.posY, player.posZ, stack);
+            InventoryHelper.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), stack);
+//            InventoryHelper.spawnItemStack(world, player.posX, player.posY, player.posZ, stack);
         }
 
         world.removeTileEntity(pos);

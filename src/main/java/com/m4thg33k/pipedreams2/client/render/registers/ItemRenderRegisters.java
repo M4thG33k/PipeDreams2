@@ -16,20 +16,31 @@ public class ItemRenderRegisters {
 
     public static void registerItemRenderers()
     {
+        // Gilded Iron
+        reg(ModItems.itemGildedIron, Names.ITEM_GILDED_IRON);
+        reg(ModItems.itemGildedIronNugget, Names.ITEM_GILDED_IRON_NUGGET);
+        reg(Item.getItemFromBlock(ModBlocks.blockGildedIron), Names.BLOCK_GILDED_IRON);
+
+
         // Wrench
         for (int i=0; i < 2; i++)
         {
-//            reg(ModItems.itemWrench, i, Names.ITEM_WRENCH, "meta="+i);
             ModelLoader.setCustomModelResourceLocation(ModItems.itemWrench,
                     i,
                     new ModelResourceLocation(Names.MODID + ":" + Names.ITEM_WRENCH, "meta="+i));
         }
 
         // Portable Tank renderer
-//        reg(Item.getItemFromBlock(ModBlocks.blockPortTank), 0, TankRenderHelper.SMART_MODEL);
         ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(ModBlocks.blockPortTank),
                 0,
                 TankRenderHelper.SMART_MODEL);
+    }
+
+    private static void reg(Item item, String name)
+    {
+        ModelLoader.setCustomModelResourceLocation(item,
+                0,
+                new ModelResourceLocation(Names.MODID + ":" + name, "inventory"));
     }
 
     @ParametersAreNonnullByDefault

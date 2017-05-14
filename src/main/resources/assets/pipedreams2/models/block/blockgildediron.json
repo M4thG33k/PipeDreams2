@@ -1,0 +1,6 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "pipedreams2:blocks/gilded_iron_block"
+  }
+}
