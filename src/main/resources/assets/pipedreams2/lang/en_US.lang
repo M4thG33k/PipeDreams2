@@ -1,0 +1,9 @@
+itemGroup.tabPipeDream=Pipe Dreams
+
+tile.tilePortableTank.name=Portable Tank
+tile.blockGildedIron.name=Gilded Iron Block
+
+item.itemGildedIron.name=Gilded Iron Ingot
+item.itemGildedIronNugget.name=Gilded Iron Nugget
+item.itemWrench_0.name=4D Wrench
+item.itemWrench_1.name=4D Wrench (Inverted)

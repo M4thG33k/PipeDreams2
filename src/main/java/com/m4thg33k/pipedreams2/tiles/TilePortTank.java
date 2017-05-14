@@ -56,6 +56,7 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
         tank.readFromNBT(compound);
         fluidConnections.readFromNBT(compound);
         fluidConnectionQuantifiers.readFromNBT(compound);
+
     }
 
     @Override
