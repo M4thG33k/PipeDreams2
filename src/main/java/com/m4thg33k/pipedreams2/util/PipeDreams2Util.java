@@ -1,8 +1,12 @@
 package com.m4thg33k.pipedreams2.util;
 
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class PipeDreams2Util {
 
@@ -46,4 +50,26 @@ public class PipeDreams2Util {
     {
         return new BlockPos(tag.getInteger("x"), tag.getInteger("y"), tag.getInteger("z"));
     }
+
+    public static NBTTagList getTagListForBlockPosSet(Set<BlockPos> set)
+    {
+        NBTTagList list = new NBTTagList();
+        for (BlockPos pos : set)
+        {
+            list.appendTag(getPosTag(pos));
+        }
+        return list;
+    }
+
+    public static HashSet<BlockPos> getBlockPosSetFromTagList(NBTTagList list)
+    {
+        HashSet<BlockPos> set = new HashSet<>();
+        for (int i=0; i<list.tagCount(); i++)
+        {
+            set.add(getPosFromTag(list.getCompoundTagAt(i)));
+        }
+        return set;
+    }
+
+
 }

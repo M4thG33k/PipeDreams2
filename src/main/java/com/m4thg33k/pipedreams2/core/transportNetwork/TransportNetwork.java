@@ -1,11 +1,14 @@
 package com.m4thg33k.pipedreams2.core.transportNetwork;
 
+import com.m4thg33k.pipedreams2.util.PipeDreams2Util;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+import java.util.*;
 
 public class TransportNetwork {
 
@@ -13,6 +16,400 @@ public class TransportNetwork {
     private Set<BlockPos> portSet = new HashSet<>();
     private Map<BlockPos, Set<BlockPos>> adjacencyList = new HashMap<>();
     private Map<BlockPosTuple, TransportPath> paths = new HashMap<>();
+
+    // data used for articulation point calculations
+    private Map<BlockPos, Boolean> isArticulationPoint;
+    private Map<BlockPos, Integer> depth;
+    private Map<BlockPos, Boolean> visited;
+    private Map<BlockPos, Integer> lowValue;
+    private Map<BlockPos, BlockPos> parent;
+
+    public TransportNetwork(BlockPos start, boolean isPort)
+    {
+        pipeSet.add(start);
+        if (isPort)
+        {
+            portSet.add(start);
+            paths.put(new BlockPosTuple(start, start), new TransportPath(start));
+        }
+    }
+
+    public TransportNetwork(BlockPos start)
+    {
+        this(start, false);
+    }
+
+    /** Merges the input networks together into one large, connected network.
+     * Recall that all networks should be connected components. All networks should
+     * also not initially contain pos, but should have a/some pipe(s) adjacent
+     * to pos; the merge will create a single connected component with an
+     * articulation point at pos. (That is, none of the original paths will change.
+     * The function that calls this method should be responsible for deleting all non-primary networks
+     * once the operation is complete.
+     * Returns null iff the merge is unsuccessful. **/
+    @Nullable
+    @ParametersAreNonnullByDefault
+    public static TransportNetwork mergeNetworks(BlockPos pos, boolean isPort, List<TransportNetwork> networks)
+    {
+        if (networks.size() == 0)
+        {
+            return null;
+        }
+
+        for (TransportNetwork net : networks)
+        {
+            if (net.contains(pos) || net.getNeighborsIn(pos).size() == 0)
+            {
+                return null;
+            }
+        }
+
+        // Copy the first network in the list (all others will be merged into this one)
+        TransportNetwork ret = TransportNetwork.loadFromNBT(networks.get(0).writeToNBT(new NBTTagCompound()));
+        Set<BlockPos> firstPorts = ret.pipeSet;
+        Map<BlockPos, TransportPath> firstPaths = ret.createPathsToPortsStartingAt(pos);
+        ret.add(pos, isPort, firstPaths);
+
+        // For each subsequent network
+        for (int i=1; i<networks.size(); i++)
+        {
+            TransportNetwork net = networks.get(i);
+            Set<BlockPos> secondPorts = net.portSet;
+            Map<BlockPos, TransportPath> secondPaths = net.createPathsToPortsStartingAt(pos);
+
+            // Create paths between the two components
+            for (BlockPos firstPos : firstPorts)
+            {
+                for (BlockPos secondPos : secondPorts)
+                {
+                    TransportPath newPath = firstPaths.get(firstPos).getReversePath().appendPath(secondPaths.get(secondPos));
+                    ret.setPath(new BlockPosTuple(firstPos, secondPos), newPath);
+                    ret.setPath(new BlockPosTuple(secondPos, firstPos), newPath.getReversePath());
+                }
+            }
+
+            // Update our temporary information
+            firstPorts.addAll(secondPorts);
+            firstPaths.putAll(secondPaths);
+
+            // Copy all original data from the second component to the one we're returning
+            ret.addPipes(net.pipeSet);
+            ret.addPorts(net.portSet);
+            ret.addPaths(net.paths);
+        }
+
+        // make sure to add the new pipe's adjacency information after merging all the networks
+        ret.addToAdjacencyList(pos);
+
+        return ret;
+    }
+
+    public boolean contains(BlockPos pos)
+    {
+        return pipeSet.contains(pos);
+    }
+
+    private void setPath(BlockPosTuple tuple, TransportPath path)
+    {
+        this.paths.put(tuple, path);
+    }
+
+    private void addPipes(Set<BlockPos> pipes)
+    {
+        this.pipeSet.addAll(pipes);
+    }
+
+    private void addPorts(Set<BlockPos> ports)
+    {
+        this.portSet.addAll(ports);
+    }
+
+    private void addPaths(Map<BlockPosTuple, TransportPath> map)
+    {
+        this.paths.putAll(map);
+    }
+
+    private void addToAdjacencyList(BlockPos pos)
+    {
+        Set<BlockPos> neighbors = getNeighborsIn(pos);
+        if (adjacencyList.containsKey(pos))
+        {
+            adjacencyList.get(pos).addAll(neighbors);
+        }
+        else
+        {
+            adjacencyList.put(pos, neighbors);
+        }
+
+        for (BlockPos n : neighbors)
+        {
+            adjacencyList.get(n).add(pos);
+        }
+    }
+
+    public Set<BlockPos> getNeighborsIn(BlockPos pos)
+    {
+        HashSet<BlockPos> ret = new HashSet<>();
+        for (EnumFacing facing : EnumFacing.values())
+        {
+            if (pipeSet.contains(pos.offset(facing)))
+            {
+                ret.add(pos.offset(facing));
+            }
+        }
+
+        return ret;
+    }
+
+    public void add(BlockPos pos, boolean isPort, Map<BlockPos, TransportPath> pathsFromPos)
+    {
+        pipeSet.add(pos);
+
+        // For each current path, check if there is a shorter path through the newly added pipe/port
+        Set<BlockPosTuple> keySet = paths.keySet();
+        for (BlockPosTuple key : keySet)
+        {
+            TransportPath path = paths.get(key);
+            TransportPath toFirst = pathsFromPos.get(key.first);
+            TransportPath toSecond = pathsFromPos.get(key.second);
+
+            if (path.pathLength() > (toFirst.pathLength() + toSecond.pathLength()))
+            {
+                TransportPath shorterPath = toFirst.getReversePath().appendPath(toSecond);
+
+                paths.put(key, shorterPath);
+            }
+        }
+
+        // If the BlockPos corresponds to a port, add it to the port list. Then calculate the path between
+        // this new port and all the previously stored ports
+        if (isPort)
+        {
+            portSet.add(pos);
+
+            for (BlockPos end: portSet)
+            {
+                paths.put(new BlockPosTuple(pos, end), pathsFromPos.get(end));
+                paths.put(new BlockPosTuple(end, pos), pathsFromPos.get(end).getReversePath());
+            }
+        }
+
+        addToAdjacencyList(pos);
+    }
+
+    public void add(BlockPos pos, boolean isPort)
+    {
+        pipeSet.add(pos);
+
+        // Find the path between the newly added pipe/port to all ports already in the network
+        Map<BlockPos, TransportPath> pathsFromPos = createPathsToPortsStartingAt(pos);
+
+        // For each current path, check if there is a shorter path through the newly added pipe/port
+        Set<BlockPosTuple> keySet = paths.keySet();
+        for (BlockPosTuple key : keySet)
+        {
+            TransportPath path = paths.get(key);
+            TransportPath toFirst = pathsFromPos.get(key.first);
+            TransportPath toSecond = pathsFromPos.get(key.second);
+
+            if (path.pathLength() > (toFirst.pathLength() + toSecond.pathLength()))
+            {
+                TransportPath shorterPath = toFirst.getReversePath().appendPath(toSecond);
+
+                paths.put(key, shorterPath);
+            }
+        }
+
+        // If the BlockPos corresponds to a port, add it to the port list. Then calculate the path between
+        // this new port and all the previously stored ports
+        if (isPort)
+        {
+            portSet.add(pos);
+
+            for (BlockPos end: portSet)
+            {
+                paths.put(new BlockPosTuple(pos, end), pathsFromPos.get(end));
+                paths.put(new BlockPosTuple(end, pos), pathsFromPos.get(end).getReversePath());
+            }
+        }
+
+        addToAdjacencyList(pos);
+    }
+
+
+    public Map<BlockPos, TransportPath> createPathsToPortsStartingAt(BlockPos pos)
+    {
+        Set<BlockPos> seen = new HashSet<>();
+        Map<BlockPos, TransportPath> newPaths = new HashMap<>();
+        LinkedList<PathQueueElement> queue = new LinkedList<>();
+        queue.add(new PathQueueElement(pos, new TransportPath(pos)));
+
+        while (queue.size() > 0)
+        {
+            PathQueueElement element = queue.pop();
+            BlockPos ePos = element.getPos();
+            TransportPath path = element.getPath();
+
+            if (seen.contains(ePos))
+            {
+                continue;
+            }
+
+            seen.add(ePos);
+
+            if (portSet.contains(ePos))
+            {
+                newPaths.put(ePos, path.copy());
+            }
+
+            for (EnumFacing side : EnumFacing.values())
+            {
+                BlockPos child = ePos.offset(side);
+                if (pipeSet.contains(child) && !seen.contains(child))
+                {
+                    TransportPath childPath = path.copy();
+                    childPath.addDirection(side);
+                    queue.add(new PathQueueElement(child, childPath));
+                }
+            }
+        }
+
+        return newPaths;
+    }
+
+    public NBTTagCompound writeToNBT(NBTTagCompound compound)
+    {
+        // save pipeSet
+        compound.setTag("pipeList", PipeDreams2Util.getTagListForBlockPosSet(pipeSet));
+
+        // save portSet
+        compound.setTag("portList", PipeDreams2Util.getTagListForBlockPosSet(portSet));
+
+        // save adjacencyList
+        NBTTagList adj = new NBTTagList();
+        for (BlockPos pos : adjacencyList.keySet())
+        {
+            NBTTagCompound tag = new NBTTagCompound();
+            tag.setTag("key", PipeDreams2Util.getPosTag(pos));
+            tag.setTag("values", PipeDreams2Util.getTagListForBlockPosSet(adjacencyList.get(pos)));
+            adj.appendTag(tag);
+        }
+        compound.setTag("adjacencyList", adj);
+
+        // save paths
+        NBTTagList pathList = new NBTTagList();
+        for (BlockPosTuple tuple : paths.keySet())
+        {
+            NBTTagCompound tag = new NBTTagCompound();
+            tag.setTag("key", tuple.writeToNBT(new NBTTagCompound()));
+            tag.setTag("value", paths.get(tuple).writeToNBT(new NBTTagCompound()));
+            pathList.appendTag(tag);
+        }
+        compound.setTag("paths", pathList);
+
+        return compound;
+    }
+
+    public void readFromNBT(NBTTagCompound compound)
+    {
+        // read pipeSet
+        this.pipeSet = PipeDreams2Util.getBlockPosSetFromTagList(compound.getTagList("pipeList", 10));
+
+        // read portSet
+        this.portSet = PipeDreams2Util.getBlockPosSetFromTagList(compound.getTagList("portList", 10));
+
+        // read adjacencyList
+        NBTTagList adj = compound.getTagList("adjacencyList", 10);
+        adjacencyList = new HashMap<>();
+        for (int i=0; i<adj.tagCount(); i++)
+        {
+            NBTTagCompound tag = adj.getCompoundTagAt(i);
+            BlockPos key = PipeDreams2Util.getPosFromTag(tag.getCompoundTag("key"));
+            HashSet<BlockPos> values = PipeDreams2Util.getBlockPosSetFromTagList(tag.getTagList("values", 10));
+            adjacencyList.put(key, values);
+        }
+
+        // read paths
+        paths = new HashMap<>();
+        NBTTagList pathList = compound.getTagList("paths", 10);
+        for (int i=0; i<pathList.tagCount(); i++)
+        {
+            NBTTagCompound tag = pathList.getCompoundTagAt(i);
+            BlockPosTuple key = BlockPosTuple.loadFromNBT(tag.getCompoundTag("key"));
+            TransportPath value = TransportPath.loadFromNBT(tag.getCompoundTag("value"));
+            paths.put(key, value);
+        }
+    }
+
+    public static TransportNetwork loadFromNBT(NBTTagCompound compound)
+    {
+        TransportNetwork ret = new TransportNetwork(new BlockPos(0, 0, 0));
+        ret.readFromNBT(compound);
+        return ret;
+    }
+
+    private void resetArticulationPointData()
+    {
+        visited = new HashMap<>();
+        depth = new HashMap<>();
+        lowValue = new HashMap<>();
+        isArticulationPoint = new HashMap<>();
+        parent = new HashMap<>();
+
+        for (BlockPos pos : pipeSet)
+        {
+            visited.put(pos, false);
+            isArticulationPoint.put(pos, false);
+            parent.put(pos, null);
+        }
+    }
+
+    private void GetArticulationPoints(BlockPos index, int d)
+    {
+        visited.put(index, true);
+        depth.put(index, d);
+        lowValue.put(index, d);
+        int childCount = 0;
+
+        for (BlockPos child : adjacencyList.get(index))
+        {
+            if (!visited.get(child))
+            {
+                parent.put(child, index);
+                GetArticulationPoints(child, d+1);
+                childCount += 1;
+                if (lowValue.get(child) >= depth.get(index))
+                {
+                    isArticulationPoint.put(index, true);
+                }
+                lowValue.put(index, Math.min(lowValue.get(index), lowValue.get(child)));
+            }
+            else if (child != parent.get(index))
+            {
+                lowValue.put(index, Math.min(lowValue.get(index), depth.get(child)));
+            }
+        }
+
+        if (parent.get(index) == null && childCount > 1)
+        {
+            isArticulationPoint.put(index, true);
+        }
+    }
+
+    public void calculateArticulationPoints()
+    {
+        resetArticulationPointData();
+        boolean done = false;
+        for (BlockPos pos : pipeSet)
+        {
+            if (done)
+            {
+                return;
+            }
+            GetArticulationPoints(pos, 0);
+            done = true;
+        }
+    }
 
 
 }

@@ -34,6 +34,26 @@ public class TransportPath {
         length = 1;
     }
 
+    // create a copy of this path and append the input path to it
+    public TransportPath appendPath(TransportPath path)
+    {
+        TransportPath ret = this.copy();
+
+        for (Direction direction : path.getDirections())
+        {
+            EnumFacing facing = direction.getFacing();
+            int count = direction.getCount();
+
+            while (count > 0)
+            {
+                ret.addDirection(facing);
+                count -= 1;
+            }
+        }
+
+        return ret;
+    }
+
     public void addDirection(EnumFacing facing)
     {
         if (directions == null)
@@ -69,6 +89,10 @@ public class TransportPath {
         return last;
     }
 
+    public BlockPos getHead() {
+        return head;
+    }
+
     public TransportPath getReversePath()
     {
         BlockPos newHead = head.add(last);
@@ -85,10 +109,10 @@ public class TransportPath {
             }
         }
 
-        if (ret.getLast() != this.head)
-        {
-            throw new Error("Error creating reversed path. Original: " + this.toString() + " New: " + ret.toString());
-        }
+//        if (ret.getLast() != this.head)
+//        {
+//            throw new Error("Error creating reversed path. Original: " + this.toString() + " New: " + ret.toString());
+//        }
 
         return ret;
     }
@@ -165,6 +189,22 @@ public class TransportPath {
         }
     }
 
+    public static TransportPath loadFromNBT(NBTTagCompound compound)
+    {
+        TransportPath ret = new TransportPath(null);
+        ret.readFromNBT(compound);
+        return ret;
+    }
+
+    public TransportPath copy()
+    {
+        return TransportPath.loadFromNBT(this.writeToNBT(new NBTTagCompound()));
+    }
+
+    public List<Direction> getDirections() {
+        return directions;
+    }
+
     private class Direction
     {
         private EnumFacing facing;
@@ -212,4 +252,5 @@ public class TransportPath {
             count = compound.getInteger("count");
         }
     }
+
 }
