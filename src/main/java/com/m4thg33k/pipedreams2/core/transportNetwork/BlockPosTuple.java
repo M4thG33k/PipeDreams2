@@ -26,4 +26,9 @@ public class BlockPosTuple {
         return new BlockPosTuple(PipeDreams2Util.getPosFromTag(compound.getCompoundTag("firstTup")),
                 PipeDreams2Util.getPosFromTag(compound.getCompoundTag("secondTup")));
     }
+
+    public BlockPosTuple getReversed()
+    {
+        return new BlockPosTuple(this.second, this.first);
+    }
 }

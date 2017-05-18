@@ -24,6 +24,8 @@ public class TransportNetwork {
     private Map<BlockPos, Integer> lowValue;
     private Map<BlockPos, BlockPos> parent;
 
+    private boolean isDirty = false;
+
     public TransportNetwork(BlockPos start, boolean isPort)
     {
         pipeSet.add(start);
@@ -117,16 +119,19 @@ public class TransportNetwork {
     private void addPipes(Set<BlockPos> pipes)
     {
         this.pipeSet.addAll(pipes);
+        this.isDirty = true;
     }
 
     private void addPorts(Set<BlockPos> ports)
     {
         this.portSet.addAll(ports);
+        this.isDirty = true;
     }
 
     private void addPaths(Map<BlockPosTuple, TransportPath> map)
     {
         this.paths.putAll(map);
+        this.isDirty = true;
     }
 
     private void addToAdjacencyList(BlockPos pos)
@@ -145,6 +150,8 @@ public class TransportNetwork {
         {
             adjacencyList.get(n).add(pos);
         }
+
+        this.isDirty = true;
     }
 
     public Set<BlockPos> getNeighborsIn(BlockPos pos)
@@ -307,6 +314,18 @@ public class TransportNetwork {
         }
         compound.setTag("paths", pathList);
 
+        // save articulation points
+        NBTTagList apList = new NBTTagList();
+        for (BlockPos pos : isArticulationPoint.keySet())
+        {
+            NBTTagCompound tag = PipeDreams2Util.getPosTag(pos);
+            tag.setBoolean("isArticulationPoint", isArticulationPoint.get(pos));
+            apList.appendTag(tag);
+        }
+        compound.setTag("articulationPoints", apList);
+
+        compound.setBoolean("isDirty", isDirty);
+
         return compound;
     }
 
@@ -339,6 +358,17 @@ public class TransportNetwork {
             TransportPath value = TransportPath.loadFromNBT(tag.getCompoundTag("value"));
             paths.put(key, value);
         }
+
+        isArticulationPoint = new HashMap<>();
+        NBTTagList apList = compound.getTagList("articulationPoints", 10);
+        for (int i=0; i<apList.tagCount(); i++)
+        {
+            NBTTagCompound tag = apList.getCompoundTagAt(i);
+            BlockPos pos = PipeDreams2Util.getPosFromTag(tag);
+            isArticulationPoint.put(pos, tag.getBoolean("isArticulationPoint"));
+        }
+
+        isDirty = compound.getBoolean("isDirty");
     }
 
     public static TransportNetwork loadFromNBT(NBTTagCompound compound)
@@ -398,6 +428,11 @@ public class TransportNetwork {
 
     public void calculateArticulationPoints()
     {
+        if (!isDirty)
+        {
+            return;
+        }
+        isDirty = false;
         resetArticulationPointData();
         boolean done = false;
         for (BlockPos pos : pipeSet)
@@ -411,5 +446,127 @@ public class TransportNetwork {
         }
     }
 
+    public boolean isPosAnArticulationPoint(BlockPos pos)
+    {
+        this.calculateArticulationPoints();
+        return isArticulationPoint.get(pos);
+    }
 
+    private void recalculatePathsThrough(BlockPos pos)
+    {
+        Set<BlockPosTuple> endpoints = paths.keySet();
+
+        for (BlockPosTuple tup: endpoints)
+        {
+            if (paths.get(tup).isPosInPath(pos))
+            {
+                paths.remove(tup);
+                paths.remove(tup.getReversed());
+
+                paths.put(tup, findPathFromTo(tup.first, tup.second));
+                paths.put(tup.getReversed(), paths.get(tup).getReversePath());
+            }
+        }
+    }
+
+    private TransportPath findPathFromTo(BlockPos start, BlockPos end)
+    {
+        Set<BlockPos> seen = new HashSet<>();
+        LinkedList<PathQueueElement> queue = new LinkedList<>();
+        queue.add(new PathQueueElement(start, new TransportPath(start)));
+
+        while (queue.size() > 0)
+        {
+            PathQueueElement element = queue.pop();
+            BlockPos pos = element.getPos();
+            TransportPath path = element.getPath();
+
+            if (pos == end)
+            {
+                return path;
+            }
+
+            if (seen.contains(pos))
+            {
+                continue;
+            }
+
+            seen.add(pos);
+
+            for (EnumFacing facing : EnumFacing.values())
+            {
+                BlockPos newPos = pos.offset(facing);
+                if (!seen.contains(newPos) && pipeSet.contains(newPos))
+                {
+                    TransportPath childPath = path.copy();
+                    childPath.addDirection(facing);
+                    queue.add(new PathQueueElement(newPos, childPath));
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /*
+    Gets a list of all TransportNetworks created by deleting the pipe at the given location.
+    We assume that the position passed in is an articulation point of this network.
+     */
+    public List<TransportNetwork> getChildNetworksAt(BlockPos pos)
+    {
+        Set<BlockPos> seen = new HashSet<>();
+        seen.add(pos);
+
+        List<TransportNetwork> ret = new ArrayList<>();
+
+        int networkId = 0;
+        for (BlockPos child : adjacencyList.get(pos))
+        {
+            if (seen.contains(child))
+            {
+                continue;
+            }
+
+            //create a new network with only this element
+            ret.add(new TransportNetwork(child, this.portSet.contains(child)));
+            Set<BlockPos> component = new HashSet<>();
+            component.add(child);
+            LinkedList<BlockPos> queue = new LinkedList<>();
+            queue.addAll(adjacencyList.get(child));
+
+            while (queue.size() > 0)
+            {
+                BlockPos current = queue.pop();
+                if (component.contains(current))
+                {
+                    continue;
+                }
+                component.add(current);
+                ret.get(networkId).add(current, this.portSet.contains(current));
+
+                for (BlockPos currentChild : adjacencyList.get(current))
+                {
+                    if (!component.contains(currentChild))
+                    {
+                        queue.add(currentChild);
+                    }
+                }
+            }
+
+            seen.addAll(component);
+            networkId += 1;
+        }
+
+        return ret;
+    }
+
+    public Set<BlockPos> getPipeSet()
+    {
+        return this.pipeSet;
+    }
+
+    public int getSize()
+    {
+        return pipeSet.size();
+    }
 }

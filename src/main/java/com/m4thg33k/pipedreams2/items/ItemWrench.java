@@ -85,7 +85,8 @@ public class ItemWrench extends ItemBaseMetaItem {
             stack.setItemDamage((stack.getItemDamage()+1) % 2);
             return ActionResult.newResult(EnumActionResult.SUCCESS, stack);
         }
-
+        TransportNetworkWorldSavedData data = TransportNetworkWorldSavedData.get(worldIn);
+        LogHelper.info(data.getNetwork(0));
         return ActionResult.newResult(EnumActionResult.PASS, stack);
     }
 

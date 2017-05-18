@@ -1,15 +1,19 @@
 package com.m4thg33k.pipedreams2.core.transportNetwork;
 
+import com.m4thg33k.pipedreams2.core.interfaces.IPipeTE;
 import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.util.LogHelper;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.storage.MapStorage;
 
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.HashMap;
+import java.util.*;
 
 public class TransportNetworkWorldSavedData extends WorldSavedData {
 
@@ -17,6 +21,11 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
     private int test = 0;
     private NBTTagCompound data = new NBTTagCompound();
     private static final String NBT_NAME = DATA_NAME + "_NBT";
+    private static final String NBT_NETWORK_PREFIX = "PD2_network_id_";
+    private static final int NBT_NET_PRE_LEN = NBT_NETWORK_PREFIX.length();
+
+    // Maps integers to transport networks. Every pipe should keep a reference to which network it is a part of.
+    private Map<Integer, TransportNetwork> networkMap = new HashMap<>();
 
     public TransportNetworkWorldSavedData()
     {
@@ -31,8 +40,15 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
     @ParametersAreNonnullByDefault
     public void readFromNBT(NBTTagCompound nbt) {
         data = nbt.getCompoundTag(NBT_NAME);
-        test = data.getInteger("test");
-        LogHelper.info("Test after reading NBT: " + test);
+
+        for (String key : data.getKeySet())
+        {
+            if (key.startsWith(NBT_NETWORK_PREFIX))
+            {
+                int id = Integer.parseInt(key.substring(NBT_NET_PRE_LEN));
+                networkMap.put(id, TransportNetwork.loadFromNBT(data.getCompoundTag(key)));
+            }
+        }
     }
 
     @Override
@@ -67,5 +83,126 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
         test++;
         data.setInteger("test", test);
         markDirty();
+    }
+
+    public TransportNetwork getNetwork(int id)
+    {
+        return networkMap.get(id);
+    }
+
+    public int getNetworkForBlockPos(World worldIn, BlockPos pos, boolean isPort) {
+        Set<Integer> neighborNetworks = new HashSet<>();
+        for (EnumFacing facing : EnumFacing.values()) {
+            TileEntity te = worldIn.getTileEntity(pos);
+            if (te instanceof IPipeTE) {
+                neighborNetworks.add(((IPipeTE) te).getNetworkId());
+            }
+        }
+
+        // If there are no valid neighbors, create a new network
+        if (neighborNetworks.size() == 0)
+        {
+            int newId = pos.hashCode();
+            while (networkMap.containsKey(newId))
+            {
+                newId += 1;
+            }
+
+            networkMap.put(newId, new TransportNetwork(pos, isPort));
+            return newId;
+        }
+        // If there is only one valid neighbor, add this block to that network
+        else if (neighborNetworks.size() == 1)
+        {
+            Iterator<Integer> iterator = neighborNetworks.iterator();
+            int myId = iterator.next();
+            networkMap.get(myId).add(pos, isPort);
+            return myId;
+        }
+        // Otherwise, we need to merge all the networks together on this new block.
+        else
+        {
+            List<TransportNetwork> neighboringNetworks = new ArrayList<>(neighborNetworks.size());
+            int lastId = 0;
+            for (int id : neighborNetworks)
+            {
+                neighboringNetworks.add(networkMap.remove(id));
+                updateData(id);
+                lastId = id;
+            }
+
+            networkMap.put(lastId, TransportNetwork.mergeNetworks(pos, isPort, neighboringNetworks));
+            updateData(lastId);
+            // For each pipe in this newly constructed network, we need to update the network id of each block
+            for (BlockPos bp : networkMap.get(lastId).getPipeSet())
+            {
+                TileEntity tileEntity = worldIn.getTileEntity(bp);
+                if (tileEntity instanceof IPipeTE)
+                {
+                    ((IPipeTE) tileEntity).setNetworkId(lastId);
+                }
+            }
+
+            return lastId;
+        }
+    }
+
+    public void removeBlockFromNetwork(World worldIn, BlockPos pos, int networkId)
+    {
+        TransportNetwork network = networkMap.get(networkId);
+
+        // If the network only has one item, just remove the network
+        if (network.getSize() == 1)
+        {
+            networkMap.remove(networkId);
+            updateData(networkId);
+        }
+        // Otherwise, if the block is an articulation point for the network, we have to break the network
+        // into smaller ones.
+        else if (network.isPosAnArticulationPoint(pos))
+        {
+            List<TransportNetwork> smallerNets = network.getChildNetworksAt(pos);
+            networkMap.remove(networkId);
+            updateData(networkId);
+            for (TransportNetwork net : smallerNets)
+            {
+                while (networkMap.containsKey(networkId))
+                {
+                    networkId += 1;
+                }
+                putAndUpdate(worldIn, networkId, net);
+            }
+        }
+    }
+
+    private void putAndUpdate(World world, int id, TransportNetwork net)
+    {
+        networkMap.put(id, net);
+        for (BlockPos pos : net.getPipeSet())
+        {
+            TileEntity tile = world.getTileEntity(pos);
+            if (tile instanceof IPipeTE)
+            {
+                ((IPipeTE) tile).setNetworkId(id);
+            }
+        }
+        updateData(id);
+    }
+
+    private void updateData(int changedId)
+    {
+        if (networkMap.containsKey(changedId))
+        {
+            data.setTag(NBT_NETWORK_PREFIX+changedId, networkMap.get(changedId).writeToNBT(new NBTTagCompound()));
+            markDirty();
+        }
+        else
+        {
+            if (data.hasKey(NBT_NETWORK_PREFIX+changedId))
+            {
+                data.removeTag(NBT_NETWORK_PREFIX+changedId);
+                markDirty();
+            }
+        }
     }
 }
