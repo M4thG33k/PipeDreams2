@@ -12,7 +12,7 @@ public class PipeDreams2Util {
 
     public static String facingChar(EnumFacing facing)
     {
-        return facing.name().substring(0,1);
+        return facing == null ? "Z" : facing.name().substring(0,1);
     }
 
     public static EnumFacing getFacingFromChar(String s)

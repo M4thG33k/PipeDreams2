@@ -1,5 +1,6 @@
 package com.m4thg33k.pipedreams2.core.transportNetwork;
 
+import com.m4thg33k.pipedreams2.util.LogHelper;
 import com.m4thg33k.pipedreams2.util.PipeDreams2Util;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -24,7 +25,7 @@ public class TransportNetwork {
     private Map<BlockPos, Integer> lowValue;
     private Map<BlockPos, BlockPos> parent;
 
-    private boolean isDirty = false;
+    private boolean isDirty = true;
 
     public TransportNetwork(BlockPos start, boolean isPort)
     {
@@ -98,6 +99,7 @@ public class TransportNetwork {
             ret.addPipes(net.pipeSet);
             ret.addPorts(net.portSet);
             ret.addPaths(net.paths);
+            ret.adjacencyList.putAll(net.adjacencyList);
         }
 
         // make sure to add the new pipe's adjacency information after merging all the networks
@@ -148,6 +150,9 @@ public class TransportNetwork {
 
         for (BlockPos n : neighbors)
         {
+            if (!adjacencyList.containsKey(n)) {
+                adjacencyList.put(n, new HashSet<>());
+            }
             adjacencyList.get(n).add(pos);
         }
 
@@ -316,11 +321,13 @@ public class TransportNetwork {
 
         // save articulation points
         NBTTagList apList = new NBTTagList();
-        for (BlockPos pos : isArticulationPoint.keySet())
-        {
-            NBTTagCompound tag = PipeDreams2Util.getPosTag(pos);
-            tag.setBoolean("isArticulationPoint", isArticulationPoint.get(pos));
-            apList.appendTag(tag);
+        if (isArticulationPoint != null) {
+            calculateArticulationPoints();
+            for (BlockPos pos : isArticulationPoint.keySet()) {
+                NBTTagCompound tag = PipeDreams2Util.getPosTag(pos);
+                tag.setBoolean("isArticulationPoint", isArticulationPoint.get(pos));
+                apList.appendTag(tag);
+            }
         }
         compound.setTag("articulationPoints", apList);
 
@@ -414,25 +421,25 @@ public class TransportNetwork {
                 }
                 lowValue.put(index, Math.min(lowValue.get(index), lowValue.get(child)));
             }
-            else if (child != parent.get(index))
+            else if (parent.get(index) != null && child.hashCode() != parent.get(index).hashCode())
             {
                 lowValue.put(index, Math.min(lowValue.get(index), depth.get(child)));
             }
         }
 
-        if (parent.get(index) == null && childCount > 1)
+        if (parent.get(index) == null)
         {
-            isArticulationPoint.put(index, true);
+            isArticulationPoint.put(index, childCount > 1);
         }
     }
 
     public void calculateArticulationPoints()
     {
-        if (!isDirty)
-        {
-            return;
-        }
-        isDirty = false;
+//        if (!isDirty)
+//        {
+//            return;
+//        }
+//        isDirty = false;
         resetArticulationPointData();
         boolean done = false;
         for (BlockPos pos : pipeSet)
@@ -441,9 +448,12 @@ public class TransportNetwork {
             {
                 return;
             }
+//            LogHelper.info("Trying to find AP with root at: " + pos);
             GetArticulationPoints(pos, 0);
             done = true;
+//            LogHelper.info(isArticulationPoint);
         }
+
     }
 
     public boolean isPosAnArticulationPoint(BlockPos pos)
@@ -531,6 +541,7 @@ public class TransportNetwork {
             ret.add(new TransportNetwork(child, this.portSet.contains(child)));
             Set<BlockPos> component = new HashSet<>();
             component.add(child);
+            component.add(pos);
             LinkedList<BlockPos> queue = new LinkedList<>();
             queue.addAll(adjacencyList.get(child));
 
@@ -568,5 +579,44 @@ public class TransportNetwork {
     public int getSize()
     {
         return pipeSet.size();
+    }
+
+    public void removeNonArticulationPoint(BlockPos pos)
+    {
+        this.pipeSet.remove(pos);
+        boolean isPort = this.portSet.contains(pos);
+        if (isPort)
+        {
+            this.portSet.remove(pos);
+
+            // remove all paths that had this position as an endpoint
+            Set<BlockPosTuple> keys = paths.keySet();
+            for (BlockPosTuple key : keys)
+            {
+                if (key.first == pos || key.second == pos)
+                {
+                    paths.remove(key);
+                }
+            }
+        }
+
+        // make sure to remove data from the adjacency list
+        for (BlockPos nei : adjacencyList.get(pos))
+        {
+            adjacencyList.get(nei).remove(pos);
+        }
+        adjacencyList.remove(pos);
+
+        recalculatePathsThrough(pos);
+    }
+
+    @Override
+    public String toString() {
+        String ret = "TransportNetwork\t" + pipeSet.size() + "\t" + portSet.size() + "\n";
+        for (BlockPosTuple key : paths.keySet())
+        {
+            ret += key.toString() + " --> " + paths.get(key).toString();
+        }
+        return ret;
     }
 }

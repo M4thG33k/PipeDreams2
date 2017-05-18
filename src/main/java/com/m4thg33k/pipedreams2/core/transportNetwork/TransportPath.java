@@ -22,7 +22,7 @@ import java.util.Set;
 public class TransportPath {
 
     private Set<Integer> locations = new HashSet<>();
-    private List<Direction> directions;
+    private List<Direction> directions = new ArrayList<>();
     private BlockPos head;
     private BlockPos last = new BlockPos(0, 0, 0);
     private int length = 0;
@@ -31,6 +31,7 @@ public class TransportPath {
     {
         this.head = head;
         locations.add(last.hashCode());
+
         length = 1;
     }
 
@@ -56,7 +57,7 @@ public class TransportPath {
 
     public void addDirection(EnumFacing facing)
     {
-        if (directions == null)
+        if (directions == null || directions.size() == 0)
         {
             directions = new ArrayList<>();
             directions.add(new Direction(facing));
@@ -158,9 +159,13 @@ public class TransportPath {
         directions = new ArrayList<>(list.tagCount());
         for (int i=0; i<list.tagCount(); i++)
         {
+            directions.add(new Direction(null));
+        }
+        for (int i=0; i<list.tagCount(); i++)
+        {
             NBTTagCompound tag = list.getCompoundTagAt(i);
             int index = tag.getInteger("index");
-            directions.set(index, new Direction(null));
+//            directions.set(index, new Direction(null));
             directions.get(index).readFromNBT(tag);
         }
         head = PipeDreams2Util.getPosFromTag(tagCompound.getCompoundTag("head"));

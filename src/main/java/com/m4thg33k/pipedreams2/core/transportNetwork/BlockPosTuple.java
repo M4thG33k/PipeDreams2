@@ -31,4 +31,9 @@ public class BlockPosTuple {
     {
         return new BlockPosTuple(this.second, this.first);
     }
+
+    @Override
+    public String toString() {
+        return "[[" + first.toString() + " & " + second.toString() + "]]";
+    }
 }

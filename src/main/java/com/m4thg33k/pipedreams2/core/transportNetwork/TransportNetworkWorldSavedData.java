@@ -49,6 +49,13 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
                 networkMap.put(id, TransportNetwork.loadFromNBT(data.getCompoundTag(key)));
             }
         }
+
+        LogHelper.info("There are currently " + networkMap.size() + " networks saved.");
+        Iterator<Integer> iterator = networkMap.keySet().iterator();
+        while (iterator.hasNext())
+        {
+            LogHelper.info(networkMap.get(iterator.next()).toString());
+        }
     }
 
     @Override
@@ -93,7 +100,7 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
     public int getNetworkForBlockPos(World worldIn, BlockPos pos, boolean isPort) {
         Set<Integer> neighborNetworks = new HashSet<>();
         for (EnumFacing facing : EnumFacing.values()) {
-            TileEntity te = worldIn.getTileEntity(pos);
+            TileEntity te = worldIn.getTileEntity(pos.offset(facing));
             if (te instanceof IPipeTE) {
                 neighborNetworks.add(((IPipeTE) te).getNetworkId());
             }
@@ -102,13 +109,14 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
         // If there are no valid neighbors, create a new network
         if (neighborNetworks.size() == 0)
         {
-            int newId = pos.hashCode();
-            while (networkMap.containsKey(newId))
-            {
-                newId += 1;
-            }
+            int newId = getNextValidKey(pos.hashCode());
+//            while (networkMap.containsKey(newId))
+//            {
+//                newId += 1;
+//            }
 
             networkMap.put(newId, new TransportNetwork(pos, isPort));
+            updateData(newId);
             return newId;
         }
         // If there is only one valid neighbor, add this block to that network
@@ -117,6 +125,7 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
             Iterator<Integer> iterator = neighborNetworks.iterator();
             int myId = iterator.next();
             networkMap.get(myId).add(pos, isPort);
+            updateData(myId);
             return myId;
         }
         // Otherwise, we need to merge all the networks together on this new block.
@@ -149,7 +158,9 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
 
     public void removeBlockFromNetwork(World worldIn, BlockPos pos, int networkId)
     {
+        LogHelper.info("Attempting to remove from network: " + networkId);
         TransportNetwork network = networkMap.get(networkId);
+        LogHelper.info(network.toString());
 
         // If the network only has one item, just remove the network
         if (network.getSize() == 1)
@@ -166,12 +177,20 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
             updateData(networkId);
             for (TransportNetwork net : smallerNets)
             {
-                while (networkMap.containsKey(networkId))
-                {
-                    networkId += 1;
-                }
+                networkId = getNextValidKey(networkId);
+//                while (networkMap.containsKey(networkId))
+//                {
+//                    networkId += 1;
+//                }
                 putAndUpdate(worldIn, networkId, net);
             }
+        }
+        // Otherwise, removing this block doesn't affect the connectedness of the network, but it may change
+        // paths, so we need to be careful of that.
+        else
+        {
+            networkMap.get(networkId).removeNonArticulationPoint(pos);
+            updateData(networkId);
         }
     }
 
@@ -191,6 +210,7 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
 
     private void updateData(int changedId)
     {
+        LogHelper.info("TNWSD currently has " + this.networkMap.size() + " networks saved!");
         if (networkMap.containsKey(changedId))
         {
             data.setTag(NBT_NETWORK_PREFIX+changedId, networkMap.get(changedId).writeToNBT(new NBTTagCompound()));
@@ -204,5 +224,14 @@ public class TransportNetworkWorldSavedData extends WorldSavedData {
                 markDirty();
             }
         }
+    }
+
+    private int getNextValidKey(int key)
+    {
+        while (key==0 || networkMap.containsKey(key))
+        {
+            key += 1;
+        }
+        return key;
     }
 }

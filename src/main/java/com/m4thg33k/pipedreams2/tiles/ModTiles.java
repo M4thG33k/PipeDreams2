@@ -9,5 +9,6 @@ public class ModTiles {
     {
         String prefix = "tile." + Names.MODID;
         GameRegistry.registerTileEntity(TilePortTank.class, prefix + Names.TILE_PORTABLE_TANK);
+        GameRegistry.registerTileEntity(TilePipe.class, prefix + Names.TILE_TRANSPORT_PIPE);
     }
 }
