@@ -7,17 +7,17 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-public class TilePipe extends TileEntity implements IPipeTE {
+public class TilePort extends TileEntity implements IPipeTE{
 
-    private final String NID_NBT = "PipeNetworkId";
+    private final static String NID_NBT = "PipeNetworkId";
     private int networkId;
 
-    public TilePipe()
+    public TilePort()
     {
         super();
-
     }
 
     @Override
@@ -33,10 +33,9 @@ public class TilePipe extends TileEntity implements IPipeTE {
     }
 
     @Override
-    public void initializeNetworkId()
-    {
+    public void initializeNetworkId() {
         TransportNetworkWorldSavedData data = TransportNetworkWorldSavedData.get(world);
-        setNetworkId(data.getNetworkForBlockPos(world, pos, false));
+        setNetworkId(data.getNetworkForBlockPos(world, pos, true));
     }
 
     @Override
@@ -46,6 +45,7 @@ public class TilePipe extends TileEntity implements IPipeTE {
     }
 
     @Override
+    @Nonnull
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
         compound = super.writeToNBT(compound);
         compound.setInteger(NID_NBT, getNetworkId());
@@ -59,6 +59,7 @@ public class TilePipe extends TileEntity implements IPipeTE {
     }
 
     @Override
+    @Nonnull
     public NBTTagCompound getUpdateTag() {
         return this.writeToNBT(new NBTTagCompound());
     }

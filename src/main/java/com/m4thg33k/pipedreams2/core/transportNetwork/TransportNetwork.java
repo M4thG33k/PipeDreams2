@@ -16,7 +16,8 @@ public class TransportNetwork {
     private Set<BlockPos> pipeSet = new HashSet<>();
     private Set<BlockPos> portSet = new HashSet<>();
     private Map<BlockPos, Set<BlockPos>> adjacencyList = new HashMap<>();
-    private Map<BlockPosTuple, TransportPath> paths = new HashMap<>();
+//    private Map<BlockPosTuple, TransportPath> paths = new HashMap<>();
+    // TODO: 5/18/2017 CHANGE CODE TO USE THE NEW BlockToBlockPathMap class 
 
     // data used for articulation point calculations
     private Map<BlockPos, Boolean> isArticulationPoint;
@@ -198,9 +199,16 @@ public class TransportNetwork {
         if (isPort)
         {
             portSet.add(pos);
+            // Since the input pathsFromPos didn't know this was a port originally, we
+            // have to manually add the path from this port to itself.
+            paths.put(new BlockPosTuple(pos, pos), new TransportPath(pos));
 
             for (BlockPos end: portSet)
             {
+                if (end.hashCode() == pos.hashCode())
+                {
+                    continue;
+                }
                 paths.put(new BlockPosTuple(pos, end), pathsFromPos.get(end));
                 paths.put(new BlockPosTuple(end, pos), pathsFromPos.get(end).getReversePath());
             }
@@ -237,9 +245,16 @@ public class TransportNetwork {
         if (isPort)
         {
             portSet.add(pos);
+            // Since the input pathsFromPos didn't know this was a port originally, we
+            // have to manually add the path from this port to itself.
+            paths.put(new BlockPosTuple(pos, pos), new TransportPath(pos));
 
             for (BlockPos end: portSet)
             {
+                if (end.hashCode() == pos.hashCode())
+                {
+                    continue;
+                }
                 paths.put(new BlockPosTuple(pos, end), pathsFromPos.get(end));
                 paths.put(new BlockPosTuple(end, pos), pathsFromPos.get(end).getReversePath());
             }

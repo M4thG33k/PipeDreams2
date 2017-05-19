@@ -21,6 +21,9 @@ public class ItemRenderRegisters {
         reg(ModItems.itemGildedIronNugget, Names.ITEM_GILDED_IRON_NUGGET);
         reg(Item.getItemFromBlock(ModBlocks.blockGildedIron), Names.BLOCK_GILDED_IRON);
 
+        // Pipe and port
+        reg(Item.getItemFromBlock(ModBlocks.blockTransportPipe), Names.TILE_TRANSPORT_PIPE);
+        reg(Item.getItemFromBlock(ModBlocks.blockTransportPort), Names.TILE_TRANSPORT_PORT);
 
         // Wrench
         for (int i=0; i < 2; i++)

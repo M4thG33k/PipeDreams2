@@ -2,6 +2,8 @@ package com.m4thg33k.pipedreams2.client.events;
 
 import com.m4thg33k.pipedreams2.blocks.ModBlocks;
 import com.m4thg33k.pipedreams2.client.render.FluidColorHelper;
+import com.m4thg33k.pipedreams2.core.interfaces.IPipe;
+import com.m4thg33k.pipedreams2.core.interfaces.IPipeTE;
 import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.tiles.TilePipe;
 import com.m4thg33k.pipedreams2.util.LogHelper;
@@ -57,12 +59,12 @@ public class ClientEvents {
             World world = Minecraft.getMinecraft().world;
             IBlockState state = world.getBlockState(trace.getBlockPos());
 
-            if (state.getBlock() == ModBlocks.blockTransportPipe)
+            if (state.getBlock() instanceof IPipe)
             {
                 TileEntity tile = world.getTileEntity(trace.getBlockPos());
-                if (tile != null && tile instanceof TilePipe)
+                if (tile != null && tile instanceof IPipeTE)
                 {
-                    int id = ((TilePipe) tile).getNetworkId();
+                    int id = ((IPipeTE) tile).getNetworkId();
                     renderNetworkId(id, event.getPlayer(), trace.getBlockPos(), event.getPartialTicks());
                 }
             }

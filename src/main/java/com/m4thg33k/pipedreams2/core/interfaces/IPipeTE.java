@@ -5,4 +5,6 @@ public interface IPipeTE {
     int getNetworkId();
 
     void setNetworkId(int id);
+
+    void initializeNetworkId();
 }

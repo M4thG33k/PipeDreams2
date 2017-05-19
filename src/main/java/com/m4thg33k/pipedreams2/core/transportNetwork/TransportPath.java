@@ -125,7 +125,7 @@ public class TransportPath {
         {
             ret += direction.toString() + "#";
         }
-        return ret.substring(0, ret.length()-1);
+        return ret.length() > 0 ? ret.substring(0, ret.length()-1) : ret;
     }
 
     public int pathLength()

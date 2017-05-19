@@ -14,7 +14,7 @@ public class Names {
     public static final String TILE_PORTABLE_TANK = "tilePortableTank";
     public static final String BLOCK_GILDED_IRON = "blockGildedIron";
     public static final String TILE_TRANSPORT_PIPE = "tileTransportPipe";
-
+    public static final String TILE_TRANSPORT_PORT = "tileTransportPort";
 
 
     // ------------------ Items ------------------

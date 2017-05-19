@@ -5,13 +5,21 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.math.BlockPos;
 
 public class BlockPosTuple {
-    public final BlockPos first;
-    public final BlockPos second;
+    private final BlockPos first;
+    private final BlockPos second;
 
     public BlockPosTuple(BlockPos first, BlockPos second)
     {
         this.first = first;
         this.second = second;
+    }
+
+    public BlockPos getFirst() {
+        return first;
+    }
+
+    public BlockPos getSecond() {
+        return second;
     }
 
     public NBTTagCompound writeToNBT(NBTTagCompound compound)
@@ -35,5 +43,10 @@ public class BlockPosTuple {
     @Override
     public String toString() {
         return "[[" + first.toString() + " & " + second.toString() + "]]";
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 }
