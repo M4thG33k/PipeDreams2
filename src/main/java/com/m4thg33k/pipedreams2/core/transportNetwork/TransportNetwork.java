@@ -17,7 +17,7 @@ public class TransportNetwork {
     private Set<BlockPos> portSet = new HashSet<>();
     private Map<BlockPos, Set<BlockPos>> adjacencyList = new HashMap<>();
 //    private Map<BlockPosTuple, TransportPath> paths = new HashMap<>();
-    // TODO: 5/18/2017 CHANGE CODE TO USE THE NEW BlockToBlockPathMap class 
+    private BlockToBlockPathMap paths = new BlockToBlockPathMap();
 
     // data used for articulation point calculations
     private Map<BlockPos, Boolean> isArticulationPoint;
@@ -70,7 +70,7 @@ public class TransportNetwork {
 
         // Copy the first network in the list (all others will be merged into this one)
         TransportNetwork ret = TransportNetwork.loadFromNBT(networks.get(0).writeToNBT(new NBTTagCompound()));
-        Set<BlockPos> firstPorts = ret.pipeSet;
+        Set<BlockPos> firstPorts = new HashSet<>(ret.portSet);
         Map<BlockPos, TransportPath> firstPaths = ret.createPathsToPortsStartingAt(pos);
         ret.add(pos, isPort, firstPaths);
 
@@ -131,7 +131,7 @@ public class TransportNetwork {
         this.isDirty = true;
     }
 
-    private void addPaths(Map<BlockPosTuple, TransportPath> map)
+    private void addPaths(BlockToBlockPathMap map)
     {
         this.paths.putAll(map);
         this.isDirty = true;
@@ -179,20 +179,37 @@ public class TransportNetwork {
         pipeSet.add(pos);
 
         // For each current path, check if there is a shorter path through the newly added pipe/port
-        Set<BlockPosTuple> keySet = paths.keySet();
-        for (BlockPosTuple key : keySet)
+//        Set<BlockPosTuple> keySet = paths.keySet();
+        Set<BlockPos> headSet = paths.getHeads();
+        for (BlockPos head : headSet)
         {
-            TransportPath path = paths.get(key);
-            TransportPath toFirst = pathsFromPos.get(key.first);
-            TransportPath toSecond = pathsFromPos.get(key.second);
-
-            if (path.pathLength() > (toFirst.pathLength() + toSecond.pathLength()))
+            Set<BlockPos> tailSet = paths.getTails(head);
+            for (BlockPos tail : tailSet)
             {
-                TransportPath shorterPath = toFirst.getReversePath().appendPath(toSecond);
+                TransportPath path = paths.get(head, tail);
+                TransportPath toHead = pathsFromPos.get(head);
+                TransportPath toTail = pathsFromPos.get(tail);
 
-                paths.put(key, shorterPath);
+                if (path.pathLength() > (toHead.pathLength() + toTail.pathLength()))
+                {
+                    TransportPath shorterPath = toHead.getReversePath().appendPath(toTail);
+                    paths.put(head, tail, shorterPath);
+                }
             }
         }
+//        for (BlockPosTuple key : keySet)
+//        {
+//            TransportPath path = paths.get(key);
+//            TransportPath toFirst = pathsFromPos.get(key.first);
+//            TransportPath toSecond = pathsFromPos.get(key.second);
+//
+//            if (path.pathLength() > (toFirst.pathLength() + toSecond.pathLength()))
+//            {
+//                TransportPath shorterPath = toFirst.getReversePath().appendPath(toSecond);
+//
+//                paths.put(key, shorterPath);
+//            }
+//        }
 
         // If the BlockPos corresponds to a port, add it to the port list. Then calculate the path between
         // this new port and all the previously stored ports
@@ -225,20 +242,38 @@ public class TransportNetwork {
         Map<BlockPos, TransportPath> pathsFromPos = createPathsToPortsStartingAt(pos);
 
         // For each current path, check if there is a shorter path through the newly added pipe/port
-        Set<BlockPosTuple> keySet = paths.keySet();
-        for (BlockPosTuple key : keySet)
+        Set<BlockPos> headSet = paths.getHeads();
+        for (BlockPos head : headSet)
         {
-            TransportPath path = paths.get(key);
-            TransportPath toFirst = pathsFromPos.get(key.first);
-            TransportPath toSecond = pathsFromPos.get(key.second);
-
-            if (path.pathLength() > (toFirst.pathLength() + toSecond.pathLength()))
+            Set<BlockPos> tailSet = paths.getTails(head);
+            for (BlockPos tail : tailSet)
             {
-                TransportPath shorterPath = toFirst.getReversePath().appendPath(toSecond);
+                TransportPath path = paths.get(head, tail);
+                TransportPath toHead = pathsFromPos.get(head);
+                TransportPath toTail = pathsFromPos.get(tail);
 
-                paths.put(key, shorterPath);
+                if (path.pathLength() > (toHead.pathLength() + toTail.pathLength()))
+                {
+                    TransportPath shorterPath = toHead.getReversePath().appendPath(toTail);
+                    paths.put(head, tail, shorterPath);
+                }
             }
         }
+
+//        Set<BlockPosTuple> keySet = paths.keySet();
+//        for (BlockPosTuple key : keySet)
+//        {
+//            TransportPath path = paths.get(key);
+//            TransportPath toFirst = pathsFromPos.get(key.first);
+//            TransportPath toSecond = pathsFromPos.get(key.second);
+//
+//            if (path.pathLength() > (toFirst.pathLength() + toSecond.pathLength()))
+//            {
+//                TransportPath shorterPath = toFirst.getReversePath().appendPath(toSecond);
+//
+//                paths.put(key, shorterPath);
+//            }
+//        }
 
         // If the BlockPos corresponds to a port, add it to the port list. Then calculate the path between
         // this new port and all the previously stored ports
@@ -258,6 +293,9 @@ public class TransportNetwork {
                 paths.put(new BlockPosTuple(pos, end), pathsFromPos.get(end));
                 paths.put(new BlockPosTuple(end, pos), pathsFromPos.get(end).getReversePath());
             }
+
+            LogHelper.info("Added port at: " + pos);
+            LogHelper.info(toString());
         }
 
         addToAdjacencyList(pos);
@@ -324,14 +362,15 @@ public class TransportNetwork {
         compound.setTag("adjacencyList", adj);
 
         // save paths
-        NBTTagList pathList = new NBTTagList();
-        for (BlockPosTuple tuple : paths.keySet())
-        {
-            NBTTagCompound tag = new NBTTagCompound();
-            tag.setTag("key", tuple.writeToNBT(new NBTTagCompound()));
-            tag.setTag("value", paths.get(tuple).writeToNBT(new NBTTagCompound()));
-            pathList.appendTag(tag);
-        }
+        NBTTagList pathList = paths.getTagList();
+//        NBTTagList pathList = new NBTTagList();
+//        for (BlockPosTuple tuple : paths.keySet())
+//        {
+//            NBTTagCompound tag = new NBTTagCompound();
+//            tag.setTag("key", tuple.writeToNBT(new NBTTagCompound()));
+//            tag.setTag("value", paths.get(tuple).writeToNBT(new NBTTagCompound()));
+//            pathList.appendTag(tag);
+//        }
         compound.setTag("paths", pathList);
 
         // save articulation points
@@ -371,15 +410,17 @@ public class TransportNetwork {
         }
 
         // read paths
-        paths = new HashMap<>();
         NBTTagList pathList = compound.getTagList("paths", 10);
-        for (int i=0; i<pathList.tagCount(); i++)
-        {
-            NBTTagCompound tag = pathList.getCompoundTagAt(i);
-            BlockPosTuple key = BlockPosTuple.loadFromNBT(tag.getCompoundTag("key"));
-            TransportPath value = TransportPath.loadFromNBT(tag.getCompoundTag("value"));
-            paths.put(key, value);
-        }
+        paths = BlockToBlockPathMap.loadFromTagList(pathList);
+//        paths = new HashMap<>();
+//        NBTTagList pathList = compound.getTagList("paths", 10);
+//        for (int i=0; i<pathList.tagCount(); i++)
+//        {
+//            NBTTagCompound tag = pathList.getCompoundTagAt(i);
+//            BlockPosTuple key = BlockPosTuple.loadFromNBT(tag.getCompoundTag("key"));
+//            TransportPath value = TransportPath.loadFromNBT(tag.getCompoundTag("value"));
+//            paths.put(key, value);
+//        }
 
         isArticulationPoint = new HashMap<>();
         NBTTagList apList = compound.getTagList("articulationPoints", 10);
@@ -479,19 +520,51 @@ public class TransportNetwork {
 
     private void recalculatePathsThrough(BlockPos pos)
     {
-        Set<BlockPosTuple> endpoints = paths.keySet();
-
-        for (BlockPosTuple tup: endpoints)
+        Set<BlockPos> heads = new HashSet<>(paths.getHeads());
+        for (BlockPos head : heads)
         {
-            if (paths.get(tup).isPosInPath(pos))
+            if (head.hashCode() == pos.hashCode())
             {
-                paths.remove(tup);
-                paths.remove(tup.getReversed());
+                paths.removeHead(head);
+                continue;
+            }
 
-                paths.put(tup, findPathFromTo(tup.first, tup.second));
-                paths.put(tup.getReversed(), paths.get(tup).getReversePath());
+            Set<BlockPos> tails = new HashSet<>(paths.getTails(head));
+            for (BlockPos tail : tails)
+            {
+                if (tail.hashCode() == pos.hashCode())
+                {
+                    paths.remove(head, tail);
+                    continue;
+                }
+
+                TransportPath path = paths.get(head, tail);
+                if (path.isPosInPath(pos))
+                {
+                    paths.remove(head, tail);
+                    TransportPath newPath = findPathFromTo(head, tail);
+                    if (newPath == null)
+                    {
+                        continue;
+                    }
+                    paths.put(head, tail, findPathFromTo(head, tail));
+                }
             }
         }
+
+//        Set<BlockPosTuple> endpoints = paths.keySet();
+//
+//        for (BlockPosTuple tup: endpoints)
+//        {
+//            if (paths.get(tup).isPosInPath(pos))
+//            {
+//                paths.remove(tup);
+//                paths.remove(tup.getReversed());
+//
+//                paths.put(tup, findPathFromTo(tup.first, tup.second));
+//                paths.put(tup.getReversed(), paths.get(tup).getReversePath());
+//            }
+//        }
     }
 
     private TransportPath findPathFromTo(BlockPos start, BlockPos end)
@@ -605,14 +678,31 @@ public class TransportNetwork {
             this.portSet.remove(pos);
 
             // remove all paths that had this position as an endpoint
-            Set<BlockPosTuple> keys = paths.keySet();
-            for (BlockPosTuple key : keys)
+            Set<BlockPos> heads = new HashSet<>(paths.getHeads());
+            for (BlockPos head : heads)
             {
-                if (key.first == pos || key.second == pos)
+                if (head.hashCode() == pos.hashCode())
                 {
-                    paths.remove(key);
+                    paths.removeHead(head);
+                    continue;
+                }
+                Set<BlockPos> tails = new HashSet<>(paths.getTails(head));
+                for (BlockPos tail : tails)
+                {
+                    if (tail.hashCode() == pos.hashCode())
+                    {
+                        paths.remove(head, tail);
+                    }
                 }
             }
+//            Set<BlockPosTuple> keys = paths.keySet();
+//            for (BlockPosTuple key : keys)
+//            {
+//                if (key.first == pos || key.second == pos)
+//                {
+//                    paths.remove(key);
+//                }
+//            }
         }
 
         // make sure to remove data from the adjacency list
@@ -630,8 +720,19 @@ public class TransportNetwork {
         String ret = "TransportNetwork\t" + pipeSet.size() + "\t" + portSet.size() + "\n";
         for (BlockPosTuple key : paths.keySet())
         {
-            ret += key.toString() + " --> " + paths.get(key).toString();
+            try {
+                ret += key.toString() + " --> " + paths.get(key).toString() + "\n";
+            }
+            catch (NullPointerException e)
+            {
+                LogHelper.error("ERROR! NPE");
+            }
         }
         return ret;
+    }
+
+    public Set<BlockPos> getConnectedPorts(BlockPos pos)
+    {
+        return paths.getTails(pos);
     }
 }
