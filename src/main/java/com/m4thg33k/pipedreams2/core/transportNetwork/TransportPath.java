@@ -19,7 +19,7 @@ import java.util.Set;
 
     The directions list is an array which tells which direction(s) need to be travelled in order to traverse the path.
  */
-public class TransportPath {
+public class TransportPath implements Comparable<TransportPath>{
 
     private Set<Integer> locations = new HashSet<>();
     private List<Direction> directions = new ArrayList<>();
@@ -208,6 +208,11 @@ public class TransportPath {
 
     public List<Direction> getDirections() {
         return directions;
+    }
+
+    @Override
+    public int compareTo(TransportPath other) {
+        return Integer.compare(this.length, other.length);
     }
 
     private class Direction

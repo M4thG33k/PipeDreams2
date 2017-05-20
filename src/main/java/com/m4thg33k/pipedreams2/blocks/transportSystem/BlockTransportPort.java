@@ -21,6 +21,7 @@ import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
+import java.util.List;
 import java.util.Set;
 
 public class BlockTransportPort extends BaseBlock implements IPipe {
@@ -75,10 +76,16 @@ public class BlockTransportPort extends BaseBlock implements IPipe {
             {
                 return false;
             }
-            LogHelper.info("The port at position: " + pos + " has access to:");
-            for (BlockPos tail : tails)
+            LogHelper.info("The port at position: " + pos + " has access to " + tails.size() + " ports.");
+            List<BlockPos> sortedTails = network.getSortedListOfTailsFor(pos);
+            for (BlockPos tail : sortedTails)
             {
-                LogHelper.info("\t\t" + tail);
+                LogHelper.info("\t\t" + tail + "\t" + network.getPath(pos, tail));
+            }
+
+            if (tile instanceof TilePort)
+            {
+                ((TilePort) tile).attemptToMoveFluidFrom(EnumFacing.UP);
             }
         }
         return true;

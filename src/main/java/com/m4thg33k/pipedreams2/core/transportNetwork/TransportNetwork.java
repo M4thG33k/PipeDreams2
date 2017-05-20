@@ -92,6 +92,16 @@ public class TransportNetwork {
                 }
             }
 
+            // if the input location is a port, we have to add all the paths accordingly
+            if (isPort)
+            {
+                for (BlockPos tail : secondPorts)
+                {
+                    ret.setPath(new BlockPosTuple(pos, tail), secondPaths.get(tail));
+                    ret.setPath(new BlockPosTuple(tail, pos), secondPaths.get(tail).getReversePath());
+                }
+            }
+
             // Update our temporary information
             firstPorts.addAll(secondPorts);
             firstPaths.putAll(secondPaths);
@@ -734,5 +744,22 @@ public class TransportNetwork {
     public Set<BlockPos> getConnectedPorts(BlockPos pos)
     {
         return paths.getTails(pos);
+    }
+
+    public List<BlockPos> getSortedListOfTailsFor(BlockPos head)
+    {
+        List<BlockPos> toReturn = new ArrayList<>(paths.getTails(head));
+        Collections.sort(toReturn, new Comparator<BlockPos>() {
+            @Override
+            public int compare(BlockPos o1, BlockPos o2) {
+                return paths.get(head, o1).compareTo(paths.get(head, o2));
+            }
+        });
+        return toReturn;
+    }
+
+    public TransportPath getPath(BlockPos head, BlockPos tail)
+    {
+        return paths.get(head, tail);
     }
 }
