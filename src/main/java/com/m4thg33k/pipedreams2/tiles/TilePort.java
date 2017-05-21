@@ -116,7 +116,7 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE{
             {
                 continue;
             }
-            IFluidHandler fluidHandler = getFluidHandler(world, pos, fromDirection);
+            IFluidHandler fluidHandler = getFluidHandler(world, pos.offset(fromDirection), fromDirection.getOpposite());
             if (fluidHandler == null)
             {
                 continue;
