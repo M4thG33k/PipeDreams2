@@ -83,10 +83,10 @@ public class BlockTransportPort extends BaseBlock implements IPipe {
                 LogHelper.info("\t\t" + tail + "\t" + network.getPath(pos, tail));
             }
 
-            if (tile instanceof TilePort)
-            {
-                ((TilePort) tile).attemptToMoveFluidFrom(EnumFacing.UP);
-            }
+//            if (tile instanceof TilePort)
+//            {
+//                ((TilePort) tile).attemptToMoveFluidFrom(EnumFacing.UP);
+//            }
         }
         return true;
     }

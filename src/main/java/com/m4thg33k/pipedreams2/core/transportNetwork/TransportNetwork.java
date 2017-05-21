@@ -10,6 +10,7 @@ import net.minecraft.util.math.BlockPos;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class TransportNetwork {
 
@@ -756,6 +757,19 @@ public class TransportNetwork {
             }
         });
         return toReturn;
+    }
+
+    public Set<TupleBlockPosPathLength> getSetOfTailsWithLengthsFor(BlockPos head)
+    {
+        Set<TupleBlockPosPathLength> ret;
+        ret = paths.getTails(head).stream()
+                .map(t -> new TupleBlockPosPathLength(t, paths.get(head, t).pathLength()))
+                .collect(Collectors.toSet());
+//        for (BlockPos tail : paths.getTails(head))
+//        {
+//            ret.add(new TupleBlockPosPathLength(tail, paths.get(head, tail).pathLength()));
+//        }
+        return ret;
     }
 
     public TransportPath getPath(BlockPos head, BlockPos tail)

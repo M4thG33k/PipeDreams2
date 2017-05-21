@@ -34,7 +34,7 @@ public class TilePortTank extends TileEntity implements ITickable, IDismantleabl
     protected FluidConnections fluidConnections = new FluidConnections();
     protected FluidConnectionQuantifiers fluidConnectionQuantifiers = new FluidConnectionQuantifiers(new int[6]);
 
-    protected int MAX_FLOW = 100;
+    protected int MAX_FLOW = 10;
 
     protected HashMap<EnumFacing, SideHandler> sideHandlers = new HashMap<EnumFacing, SideHandler>();
 
