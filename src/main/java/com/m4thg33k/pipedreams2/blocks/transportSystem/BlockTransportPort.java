@@ -1,8 +1,10 @@
 package com.m4thg33k.pipedreams2.blocks.transportSystem;
 
+import com.m4thg33k.pipedreams2.PipeDreams2;
 import com.m4thg33k.pipedreams2.blocks.templates.BaseBlock;
 import com.m4thg33k.pipedreams2.core.interfaces.IPipe;
 import com.m4thg33k.pipedreams2.core.interfaces.IPipeTE;
+import com.m4thg33k.pipedreams2.core.inventory.ModGuiHandler;
 import com.m4thg33k.pipedreams2.core.lib.Names;
 import com.m4thg33k.pipedreams2.core.transportNetwork.TransportNetwork;
 import com.m4thg33k.pipedreams2.core.transportNetwork.TransportNetworkWorldSavedData;
@@ -66,27 +68,26 @@ public class BlockTransportPort extends BaseBlock implements IPipe {
         {
             return true;
         }
-        TransportNetworkWorldSavedData data = TransportNetworkWorldSavedData.get(worldIn);
-        TileEntity tile = worldIn.getTileEntity(pos);
-        if (tile instanceof IPipeTE)
+        if (playerIn.isSneaking())
         {
-            TransportNetwork network = data.getNetwork(((IPipeTE) tile).getNetworkId());
-            Set<BlockPos> tails = network.getConnectedPorts(pos);
-            if (tails == null)
-            {
-                return false;
+            TransportNetworkWorldSavedData data = TransportNetworkWorldSavedData.get(worldIn);
+            TileEntity tile = worldIn.getTileEntity(pos);
+            if (tile instanceof IPipeTE) {
+                TransportNetwork network = data.getNetwork(((IPipeTE) tile).getNetworkId());
+                Set<BlockPos> tails = network.getConnectedPorts(pos);
+                if (tails == null) {
+                    return false;
+                }
+                LogHelper.info("The port at position: " + pos + " has access to " + tails.size() + " ports.");
+                List<BlockPos> sortedTails = network.getSortedListOfTailsFor(pos);
+                for (BlockPos tail : sortedTails) {
+                    LogHelper.info("\t\t" + tail + "\t" + network.getPath(pos, tail));
+                }
             }
-            LogHelper.info("The port at position: " + pos + " has access to " + tails.size() + " ports.");
-            List<BlockPos> sortedTails = network.getSortedListOfTailsFor(pos);
-            for (BlockPos tail : sortedTails)
-            {
-                LogHelper.info("\t\t" + tail + "\t" + network.getPath(pos, tail));
-            }
-
-//            if (tile instanceof TilePort)
-//            {
-//                ((TilePort) tile).attemptToMoveFluidFrom(EnumFacing.UP);
-//            }
+        }
+        else
+        {
+            playerIn.openGui(PipeDreams2.INSTANCE, ModGuiHandler.PORT_GUI, worldIn, pos.getX(), pos.getY(), pos.getZ());
         }
         return true;
     }

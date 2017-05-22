@@ -1,8 +1,10 @@
 package com.m4thg33k.pipedreams2.proxy;
 
+import com.m4thg33k.pipedreams2.PipeDreams2;
 import com.m4thg33k.pipedreams2.blocks.ModBlocks;
 import com.m4thg33k.pipedreams2.client.events.CommonEvents;
 import com.m4thg33k.pipedreams2.core.init.ModRecipes;
+import com.m4thg33k.pipedreams2.core.inventory.ModGuiHandler;
 import com.m4thg33k.pipedreams2.core.lib.ModConfigs;
 import com.m4thg33k.pipedreams2.core.network.ModNetwork;
 import com.m4thg33k.pipedreams2.core.network.packets.BaseRenderingPacket;
@@ -13,6 +15,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 public class CommonProxy {
 
@@ -29,6 +32,7 @@ public class CommonProxy {
     {
         ModTiles.init();
         ModRecipes.createRecipes();
+        NetworkRegistry.INSTANCE.registerGuiHandler(PipeDreams2.INSTANCE, new ModGuiHandler());
     }
 
     public void postinit(FMLPostInitializationEvent event)

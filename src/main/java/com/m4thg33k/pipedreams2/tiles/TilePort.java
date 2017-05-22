@@ -2,6 +2,9 @@ package com.m4thg33k.pipedreams2.tiles;
 
 import com.m4thg33k.pipedreams2.core.interfaces.IPipeTE;
 import com.m4thg33k.pipedreams2.core.transportNetwork.*;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
@@ -13,13 +16,14 @@ import net.minecraft.world.World;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.items.IItemHandler;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class TilePort extends TileEntity implements ITickable, IPipeTE{
+public class TilePort extends TileEntity implements ITickable, IPipeTE, IInventory{
 
     private final static String NID_NBT = "PipeNetworkId";
     private int networkId;
@@ -175,64 +179,64 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE{
         }
     }
 
-    public void attemptToMoveFluidFrom(EnumFacing direction)
-    {
-        if (world.isRemote)
-        {
-            return;
-        }
-        TileEntity neighbor = world.getTileEntity(pos.offset(direction));
-        if (neighbor == null)
-        {
-            return;
-        }
-        if (neighbor.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, direction.getOpposite()))
-        {
-            IFluidHandler fluidHandler = neighbor.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, direction.getOpposite());
-            if (fluidHandler == null)
-            {
-                return;
-            }
-            FluidStack toMove = fluidHandler.drain(maxFlow, false);
-            if (toMove != null && toMove.amount > 0)
-            {
-                int fluidMoved = 0;
-//                TransportNetwork network = TransportNetworkWorldSavedData.get(world).getNetwork(this.getNetworkId());
-//                List<BlockPos> tails = network.getSortedListOfTailsFor(pos);
-
-                List<TupleBPFacingLength> outputs = getSortedOutputs();
-                for (TupleBPFacingLength tup : outputs)
-                {
-                    if (toMove.amount == 0)
-                    {
-                        break;
-                    }
-                    //stop the port from feeding into the same side it's pulling from
-                    if (tup.getPos().hashCode() == pos.hashCode() && tup.getFacing()==direction)
-                    {
-                        continue;
-                    }
-
-                    TileEntity tileTail = world.getTileEntity(tup.getPos());
-                    if (tileTail == null || !(tileTail instanceof TilePort))
-                    {
-                        continue;
-                    }
-
-                    int amountToMoveHere = ((TilePort) tileTail).moveFluidTo(tup.getFacing(), toMove);
-                    if (amountToMoveHere > 0)
-                    {
-                        toMove.amount -= amountToMoveHere;
-                        fluidMoved += amountToMoveHere;
-                    }
-                }
-                if (fluidMoved > 0)
-                {
-                    fluidHandler.drain(fluidMoved, true);
-                }
-            }
-        }
-    }
+//    public void attemptToMoveFluidFrom(EnumFacing direction)
+//    {
+//        if (world.isRemote)
+//        {
+//            return;
+//        }
+//        TileEntity neighbor = world.getTileEntity(pos.offset(direction));
+//        if (neighbor == null)
+//        {
+//            return;
+//        }
+//        if (neighbor.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, direction.getOpposite()))
+//        {
+//            IFluidHandler fluidHandler = neighbor.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, direction.getOpposite());
+//            if (fluidHandler == null)
+//            {
+//                return;
+//            }
+//            FluidStack toMove = fluidHandler.drain(maxFlow, false);
+//            if (toMove != null && toMove.amount > 0)
+//            {
+//                int fluidMoved = 0;
+////                TransportNetwork network = TransportNetworkWorldSavedData.get(world).getNetwork(this.getNetworkId());
+////                List<BlockPos> tails = network.getSortedListOfTailsFor(pos);
+//
+//                List<TupleBPFacingLength> outputs = getSortedOutputs();
+//                for (TupleBPFacingLength tup : outputs)
+//                {
+//                    if (toMove.amount == 0)
+//                    {
+//                        break;
+//                    }
+//                    //stop the port from feeding into the same side it's pulling from
+//                    if (tup.getPos().hashCode() == pos.hashCode() && tup.getFacing()==direction)
+//                    {
+//                        continue;
+//                    }
+//
+//                    TileEntity tileTail = world.getTileEntity(tup.getPos());
+//                    if (tileTail == null || !(tileTail instanceof TilePort))
+//                    {
+//                        continue;
+//                    }
+//
+//                    int amountToMoveHere = ((TilePort) tileTail).moveFluidTo(tup.getFacing(), toMove);
+//                    if (amountToMoveHere > 0)
+//                    {
+//                        toMove.amount -= amountToMoveHere;
+//                        fluidMoved += amountToMoveHere;
+//                    }
+//                }
+//                if (fluidMoved > 0)
+//                {
+//                    fluidHandler.drain(fluidMoved, true);
+//                }
+//            }
+//        }
+//    }
 
     public int moveFluidTo(EnumFacing direction, FluidStack fluidStack)
     {
@@ -241,8 +245,9 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE{
         {
             return 0;
         }
-        int amountToMove = fluidHandler.fill(fluidStack, true);
-        return amountToMove;
+        return fluidHandler.fill(fluidStack, true);
+//        int amountToMove = fluidHandler.fill(fluidStack, true);
+//        return amountToMove;
     }
 
     public static IFluidHandler getFluidHandler(World world, BlockPos pos, EnumFacing facing)
@@ -322,7 +327,6 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE{
         if (tick % fluidTick == 0)
         {
             moveFluidFromHere();
-//            attemptToMoveFluidFrom(EnumFacing.UP);
         }
     }
 
@@ -330,5 +334,90 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE{
     {
         // temp. return the ordinal
         return facing.ordinal();
+    }
+
+    @Override
+    public int getSizeInventory() {
+        return 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return false;
+    }
+
+    @Override
+    public ItemStack getStackInSlot(int index) {
+        return null;
+    }
+
+    @Override
+    public ItemStack decrStackSize(int index, int count) {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public ItemStack removeStackFromSlot(int index) {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public void setInventorySlotContents(int index, ItemStack stack) {
+
+    }
+
+    @Override
+    public int getInventoryStackLimit() {
+        return 0;
+    }
+
+    @Override
+    public boolean isUsableByPlayer(EntityPlayer player) {
+        return world.getTileEntity(this.pos) == this && player.getDistanceSq(pos) <= 64;
+    }
+
+    @Override
+    public void openInventory(EntityPlayer player) {
+
+    }
+
+    @Override
+    public void closeInventory(EntityPlayer player) {
+
+    }
+
+    @Override
+    public boolean isItemValidForSlot(int index, ItemStack stack) {
+        return false;
+    }
+
+    @Override
+    public int getField(int id) {
+        return 0;
+    }
+
+    @Override
+    public void setField(int id, int value) {
+
+    }
+
+    @Override
+    public int getFieldCount() {
+        return 0;
+    }
+
+    @Override
+    public void clear() {
+
+    }
+
+    @Override
+    public String getName() {
+        return "TEMPORARY PORT NAME";
+    }
+
+    @Override
+    public boolean hasCustomName() {
+        return false;
     }
 }

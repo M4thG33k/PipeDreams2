@@ -92,6 +92,7 @@ public class ClientEvents {
         FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
 
         GlStateManager.pushMatrix();
+//        GlStateManager.translate(0, 0, 0);
         GlStateManager.translate(x+0.5, y+1.5, z+0.5);
         GlStateManager.glNormal3f(0.0f, 1.0f, 0.0f);
         GlStateManager.rotate(-angleH, 0.0f, 1.0f, 0.0f);
