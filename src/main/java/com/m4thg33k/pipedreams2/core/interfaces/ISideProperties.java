@@ -9,6 +9,8 @@ public interface ISideProperties<E extends Enum<E>> {
 
     void incrementSide(EnumFacing side);
 
+    void decrementSide(EnumFacing side);
+
     void setSide(EnumFacing side, E value);
 
     void readFromNBT(NBTTagCompound compound);

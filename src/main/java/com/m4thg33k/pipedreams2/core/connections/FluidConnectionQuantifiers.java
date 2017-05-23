@@ -62,6 +62,20 @@ public class FluidConnectionQuantifiers implements ISideProperties<EnumFluidConn
     }
 
     @Override
+    public void decrementSide(EnumFacing side) {
+        int ordinal = connections[side.ordinal()].ordinal();
+        if (ordinal == 0)
+        {
+            ordinal = EnumFluidConnectionType.values().length - 1;
+        }
+        else
+        {
+            ordinal -= 1;
+        }
+        this.setSide(side, EnumFluidConnectionType.values()[ordinal]);
+    }
+
+    @Override
     public void setSide(EnumFacing side, EnumFluidConnectionType value) {
         connections[side.ordinal()] = value;
     }

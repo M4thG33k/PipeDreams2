@@ -1,7 +1,10 @@
 package com.m4thg33k.pipedreams2.tiles;
 
+import com.m4thg33k.pipedreams2.core.connections.PortConnections;
+import com.m4thg33k.pipedreams2.core.enums.EnumPortConnectionType;
 import com.m4thg33k.pipedreams2.core.interfaces.IPipeTE;
 import com.m4thg33k.pipedreams2.core.transportNetwork.*;
+import com.m4thg33k.pipedreams2.util.LogHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -31,6 +34,8 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
     private final static int MAX_TICK = 40;
     private int fluidTick = 40;
     private int tick = 0;
+
+    private PortConnections fluidPortConnections = new PortConnections();
 
     public TilePort()
     {
@@ -63,6 +68,8 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
         if (compound.hasKey("fluidTick")) {
             this.fluidTick = compound.getInteger("fluidTick");
         }
+
+        this.fluidPortConnections.readFromNBT(compound);
     }
 
     @Override
@@ -72,6 +79,7 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
         compound.setInteger(NID_NBT, getNetworkId());
         compound.setInteger("tick", tick);
         compound.setInteger("fluidTick", fluidTick);
+        compound = this.fluidPortConnections.writeToNBT(compound);
         return compound;
     }
 
@@ -114,6 +122,13 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
 
         for (EnumFacing fromDirection: EnumFacing.values())
         {
+            // if this port isn't allowed to pull from this direction, skip it
+            EnumPortConnectionType type = this.fluidPortConnections.getSideType(fromDirection);
+            if (type != EnumPortConnectionType.PULL && type != EnumPortConnectionType.BIDIRECTIONAL)
+            {
+                continue;
+            }
+
             // get the neighboring IFluidHandler (if it exists - skip otherwise)
             TileEntity neighbor = world.getTileEntity(pos.offset(fromDirection));
             if (neighbor == null)
@@ -136,12 +151,15 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
             int totalFluidMoved = 0;
 
             // filter the outputs to include only those with the same channel as the input
+            // and is able to push fluid out
             int channel = this.getFluidChannel(fromDirection);
             List<TupleBPFacingLength> sortedChannelTails = sortedTails.stream().filter(x -> {
                 TileEntity tailTile = world.getTileEntity(x.getPos());
                 return (tailTile != null) &&
                         (tailTile instanceof TilePort) &&
-                        ((TilePort)tailTile).getFluidChannel(x.getFacing()) == channel;
+                        ((TilePort)tailTile).getFluidChannel(x.getFacing()) == channel &&
+                        (((TilePort)tailTile).getFluidConnectionType(x.getFacing()) == EnumPortConnectionType.BIDIRECTIONAL ||
+                                ((TilePort)tailTile).getFluidConnectionType(x.getFacing()) == EnumPortConnectionType.PUSH);
             }).collect(Collectors.toList());
 
             for (TupleBPFacingLength tup : sortedChannelTails)
@@ -177,6 +195,11 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
                 fluidHandler.drain(totalFluidMoved, true);
             }
         }
+    }
+
+    public EnumPortConnectionType getFluidConnectionType(EnumFacing facing)
+    {
+        return this.fluidPortConnections.getSideType(facing);
     }
 
 //    public void attemptToMoveFluidFrom(EnumFacing direction)
@@ -265,6 +288,10 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
         List<TupleBPFacingLength> toReturn;
 
         TransportNetwork network = TransportNetworkWorldSavedData.get(world).getNetwork(this.networkId);
+        if (network==null)
+        {
+            return new ArrayList<>();
+        }
 
         Set<TupleBPFacingLength> set = new HashSet<>();
 
@@ -419,5 +446,10 @@ public class TilePort extends TileEntity implements ITickable, IPipeTE, IInvento
     @Override
     public boolean hasCustomName() {
         return false;
+    }
+
+    public void testFunction()
+    {
+        LogHelper.info("Hello! I am a test! Nice to meet you!");
     }
 }

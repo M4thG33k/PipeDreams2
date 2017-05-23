@@ -16,6 +16,8 @@ public class ContainerTilePort extends Container {
     private static int P_INV_DX = 18;
     private static int P_INV_DY = 18;
 
+    private boolean needToSendTest = false;
+
     public ContainerTilePort(IInventory playerInventory, TilePort te)
     {
         this.tilePort = te;
@@ -80,5 +82,21 @@ public class ContainerTilePort extends Container {
         }
 
         return previous;
+    }
+
+    @Override
+    public void detectAndSendChanges() {
+        super.detectAndSendChanges();
+
+        if (needToSendTest)
+        {
+            tilePort.testFunction();
+            needToSendTest = false;
+        }
+    }
+
+    public void testFunction()
+    {
+        needToSendTest = true;
     }
 }

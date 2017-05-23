@@ -8,6 +8,7 @@ public class Names {
 
     // ------------------ Paths ------------------
     public static final String PATH_BLOCK_MODELS = MODID + ":models/block/";
+    public static final String PATH_GUI_TEX = MODID + ":textures/gui/";
 
 
     // ------------------ Blocks ------------------
