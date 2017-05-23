@@ -2,7 +2,6 @@ package com.m4thg33k.pipedreams2.core.inventory.containers;
 
 import com.m4thg33k.pipedreams2.tiles.TilePort;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.Slot;
@@ -11,6 +10,11 @@ import net.minecraft.item.ItemStack;
 public class ContainerTilePort extends Container {
 
     private TilePort tilePort;
+
+    private static int P_INV_X = 8;
+    private static int P_INV_Y = 84;
+    private static int P_INV_DX = 18;
+    private static int P_INV_DY = 18;
 
     public ContainerTilePort(IInventory playerInventory, TilePort te)
     {
@@ -34,7 +38,7 @@ public class ContainerTilePort extends Container {
         // put player hotbar in 0-8
         for (int x=0; x < 9; x++)
         {
-            this.addSlotToContainer(new Slot(inventory, x, 8 + x*18, 142));
+            this.addSlotToContainer(new Slot(inventory, x, P_INV_X + x*P_INV_DX, P_INV_Y + 3*P_INV_DY + 4));
         }
 
         // put player main inventory in 9-35
@@ -42,7 +46,7 @@ public class ContainerTilePort extends Container {
         {
             for (int x=0; x<9; x++)
             {
-                this.addSlotToContainer(new Slot(inventory, x + y*9 + 9, 8 + x*18, 84 + y*18));
+                this.addSlotToContainer(new Slot(inventory, x + y*9 + 9, P_INV_X + x*P_INV_DX, P_INV_Y + y*P_INV_DY));
             }
         }
     }
